@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>AppGastos - Iniciar Sesión</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1772da",
+                        "background-light": "#f6f7f8",
+                        "surface": "#ffffff",
+                        "border-subtle": "#e2e8f0",
+                        "danger": "#ef4444",
+                    },
+                    fontFamily: { "display": ["Inter"] },
+                    borderRadius: { "DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-background-light font-display min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 p-8">
+        <div class="text-center mb-8">
+            <div
+                class="size-16 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 mx-auto mb-4">
+                <span class="material-symbols-outlined text-primary text-3xl">account_balance_wallet</span>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-900">Bienvenido a AppGastos</h1>
+            <p class="text-sm text-slate-500 mt-2">Por favor inicia sesión para continuar</p>
+        </div>
+
+        <form id="login-form" class="space-y-5">
+            <div class="space-y-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Usuario</label>
+                <input required id="username" type="text"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
+                    placeholder="admin">
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Contraseña</label>
+                <input required id="password" type="password"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
+                    placeholder="••••••••">
+            </div>
+
+            <div id="error-message"
+                class="hidden bg-danger/10 text-danger text-sm font-semibold rounded-lg p-3 text-center"></div>
+
+            <button type="submit" class="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-lg mt-6">
+                Ingresar
+            </button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-message');
+
+            try {
+                const res = await fetch('http://localhost:3000/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    errorDiv.innerText = data.error || 'Credenciales inválidas';
+                    errorDiv.classList.remove('hidden');
+                } else {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = '/';
+                }
+            } catch (err) {
+                errorDiv.innerText = 'Error del servidor.';
+                errorDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>AppGastos - Panel Financiero</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#1772da",
+            "background-light": "#f6f7f8",
+            "background-dark": "#111821",
+            "surface": "#ffffff",
+            "border-subtle": "#e2e8f0",
+            "success": "#10b981",
+            "danger": "#ef4444",
+            "accent-red": "#ef4444",
+          },
+          fontFamily: { "display": ["Inter"] },
+          borderRadius: { "DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px" },
+        },
+      },
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      min-height: max(884px, 100dvh);
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+
+    #expense-modal {
+      display: none;
+    }
+
+    #expense-modal.active {
+      display: flex;
+    }
+
+    #savings-modal {
+      display: none;
+    }
+
+    #savings-modal.active {
+      display: flex;
+    }
+  </style>
+</head>
+
+<body class="bg-background-light text-slate-900 font-display min-h-screen flex flex-col">
+  <header
+    class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border-subtle px-4 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div
+        class="size-10 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 overflow-hidden">
+        <span class="material-symbols-outlined text-primary">person</span>
+      </div>
+      <div>
+        <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Panel</p>
+        <h1 class="text-base font-bold text-slate-900">Mis Gastos</h1>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="flex flex-col items-end">
+        <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Hoy es</p>
+        <h2 class="text-sm font-bold text-slate-900 capitalize" id="current-date-display"></h2>
+      </div>
+      <button onclick="logout()" class="text-slate-400 hover:text-danger bg-slate-50 p-2 rounded-xl transition-colors">
+        <span class="material-symbols-outlined">logout</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 overflow-y-auto px-4 py-6 space-y-6 hide-scrollbar relative z-0">
+    <section>
+      <div class="relative overflow-hidden rounded-xl bg-blue-50 border border-primary/10 p-6 shadow-sm">
+        <div class="absolute -right-4 -top-4 size-24 bg-primary/5 rounded-full"></div>
+        <div class="relative z-10 flex justify-between">
+          <div>
+            <p class="text-sm font-semibold text-primary/80 uppercase tracking-tight">Balance Total de Ahorros</p>
+            <div class="mt-2 flex items-baseline gap-2">
+              <h2 class="text-3xl font-extrabold tracking-tight text-primary" id="dashboard-savings">$0.00</h2>
+            </div>
+            <p class="text-xs text-slate-500 mt-1 font-medium italic" id="dashboard-savings-breakdown">Calculando
+              proyecciones...</p>
+          </div>
+          <div class="flex flex-col gap-2 relative z-10">
+            <button onclick="openIncomeModal()"
+              class="text-sm font-bold flex items-center gap-1 bg-white text-primary px-3 py-1 rounded-full shadow-sm hover:shadow-md transition">
+              <span class="material-symbols-outlined text-sm">attach_money</span> Nuevo Ingreso
+            </button>
+            <button onclick="openSavingsModal()"
+              class="text-primary mt-2 self-end hover:bg-white p-1 rounded-full transition">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-800">Gestión de Deudas</h3>
+        <button onclick="openExpenseModal()"
+          class="text-primary text-sm font-bold flex items-center gap-1 bg-primary/5 px-3 py-1 rounded-full">
+          <span class="material-symbols-outlined text-sm">add</span> Agregar
+        </button>
+      </div>
+      <div class="bg-white rounded-xl border border-border-subtle overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="bg-primary/5 text-primary">
+                <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest w-12 text-center">Estado</th>
+                <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest">Concepto</th>
+                <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Pago</th>
+                <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Total</th>
+                <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="expenses-table-body" class="divide-y divide-slate-50">
+              <!-- JS rendered rows -->
+            </tbody>
+            <tfoot class="bg-slate-50/50 border-t border-border-subtle">
+              <tr class="text-slate-900">
+                <td class="px-4 py-4"></td>
+                <td class="px-4 py-4 font-bold text-right" style="padding-right: 0px">Total</td>
+                <td class="px-4 py-4 text-right text-danger font-extrabold text-base" id="dashboard-total-payment">$0.00
+                </td>
+                <td class="px-4 py-4 text-right font-extrabold text-base text-slate-900" id="dashboard-total-debt">$0.00
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h3 class="text-lg font-bold mb-4 text-slate-800">Análisis de Gastos (Categorías)</h3>
+      <div class="bg-white p-6 rounded-xl border border-border-subtle shadow-sm flex flex-col gap-4"
+        id="analytics-container">
+        <!-- JS rendered list of categories -->
+      </div>
+      <section>
+        <h3 class="text-lg font-bold mb-4 text-slate-800">Mis Ingresos</h3>
+        <div class="bg-white rounded-xl border border-border-subtle overflow-hidden shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead>
+                <tr class="bg-primary/5 text-primary">
+                  <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest">Fuente</th>
+                  <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Monto</th>
+                  <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Frecuencia</th>
+                  <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="incomes-table-body" class="divide-y divide-slate-50">
+                <!-- JS rendered rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+  </main>
+
+  <nav
+    class="sticky bottom-0 bg-white border-t border-border-subtle px-6 py-3 flex items-center justify-center gap-8 pb-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] z-10">
+    <button onclick="openExpenseModal()"
+      class="relative -top-6 size-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/40 ring-4 ring-background-light">
+      <span class="material-symbols-outlined text-3xl font-bold">add</span>
+    </button>
+  </nav>
+
+  <!-- Expense Modal -->
+  <div id="expense-modal" class="fixed inset-0 z-50 bg-black/50 items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+      <div class="flex items-center justify-between p-5 border-b border-slate-100">
+        <button onclick="closeExpenseModal()" class="text-slate-400 hover:text-primary"><span
+            class="material-symbols-outlined">close</span></button>
+        <h1 class="text-lg font-bold text-slate-900" id="modal-title">Agregar Nuevo Gasto</h1>
+        <div></div>
+      </div>
+      <form id="expense-form" class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+        <input type="hidden" id="expense-id">
+        <div class="space-y-1">
+          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del Concepto</label>
+          <input required id="expense-name"
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
+            placeholder="Ej. Préstamo del auto">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Fecha de Facturación</label>
+            <input required id="expense-billing" type="number" min="1" max="31"
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
+              placeholder="1-31">
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Fecha de Pago</label>
+            <input required id="expense-due" type="number" min="1" max="31"
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
+              placeholder="1-31">
+          </div>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Categoría</label>
+          <select required id="expense-category"
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary">
+            <option>Vivienda y Servicios</option>
+            <option>Transporte</option>
+            <option>Comida</option>
+            <option>Entretenimiento</option>
+            <option>Pago de Deudas</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <label class="text-xs font-bold uppercase tracking-wider text-accent-red">Pago Mensual</label>
+            <input required id="expense-monthly" step="0.01" type="number"
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none text-accent-red font-semibold"
+              placeholder="0.00">
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Deuda Total</label>
+            <input required id="expense-total" step="0.01" type="number"
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none" placeholder="0.00">
+          </div>
+        </div>
+        <button type="submit"
+          class="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-lg mt-4">Guardar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Savings Modal -->
+  <div id="savings-modal" class="fixed inset-0 z-50 bg-black/50 items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+      <div class="flex items-center justify-between p-5 border-b border-slate-100">
+        <button onclick="closeSavingsModal()" class="text-slate-400 hover:text-primary"><span
+            class="material-symbols-outlined">close</span></button>
+        <h1 class="text-lg font-bold text-slate-900">Actualizar Ahorros</h1>
+        <div></div>
+      </div>
+      <form id="savings-form" class="p-6 space-y-4">
+        <div class="space-y-1">
+          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Monto Total</label>
+          <input required id="savings-amount" step="0.01" type="number"
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none" placeholder="0.00">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Moneda</label>
+          <input required id="savings-currency" type="text" maxlength="3"
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none" placeholder="USD">
+        </div>
+        <button type="submit" class="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-lg mt-4">Guardar
+          Ahorros</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Income Modal -->
+  <div id="income-modal" class="fixed inset-0 z-50 bg-black/50 items-center justify-center p-4" style="display: none;">
+    <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+      <div class="flex items-center justify-between p-5 border-b border-slate-100">
+        <button onclick="closeIncomeModal()" class="text-slate-400 hover:text-primary"><span
+            class="material-symbols-outlined">close</span></button>
+        <h1 class="text-lg font-bold text-slate-900">Registrar Ingreso</h1>
+        <div></div>
+      </div>
+      <form id="income-form" class="p-6 space-y-4">
+        <input type="hidden" id="income-id">
+        <div class="space-y-1">
+          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre (Ej. Sueldo, Bono)</label>
+          <input required id="income-name" type="text"
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Monto</label>
+          <input required id="income-amount" step="0.01" type="number"
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none text-success font-semibold"
+            placeholder="0.00">
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Frecuencia de Pago</label>
+          <select required id="income-frequency"
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary">
+            <option value="semanal">Semanal</option>
+            <option value="quincenal">Quincenal</option>
+            <option value="mensual">Mensual</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Próximo día de Pago</label>
+          <input required id="income-next-date" type="number" min="1" max="31"
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
+            placeholder="1-31">
+        </div>
+        <button type="submit" class="w-full bg-success text-white font-bold py-4 rounded-xl shadow-lg mt-4">Guardar
+          Ingreso</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+
+</html>
