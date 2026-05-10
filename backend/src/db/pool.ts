@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -15,5 +15,9 @@ pool.on('error', (err, client) => {
     console.error('Unexpected error on idle client', err);
     process.exit(-1);
 });
+
+export async function getClient(): Promise<PoolClient> {
+    return pool.connect();
+}
 
 export default pool;

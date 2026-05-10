@@ -1,11 +1,14 @@
 import { Router } from 'express';
 import { IncomesController } from '../controllers/incomes.controller';
+import { validateBody } from '../middleware/validation.middleware';
+import { INCOME_FIELDS } from '../models/Income';
 
 const router = Router();
 
-// These routes will be protected by authenticateToken in app.ts
 router.get('/', IncomesController.getAll);
-router.post('/', IncomesController.create);
+router.get('/:id', IncomesController.getById);
+router.post('/', validateBody(INCOME_FIELDS), IncomesController.create);
+router.put('/:id', validateBody(INCOME_FIELDS), IncomesController.update);
 router.delete('/:id', IncomesController.remove);
 
 export default router;

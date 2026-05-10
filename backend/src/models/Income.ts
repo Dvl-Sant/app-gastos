@@ -10,3 +10,5 @@ export interface Income {
 
 export type CreateIncomeDTO = Omit<Income, 'id' | 'created_at' | 'user_id'>;
 export type UpdateIncomeDTO = Partial<CreateIncomeDTO>;
+
+export const INCOME_FIELDS = ['name', 'amount', 'frequency', 'next_pay_date'] as const;

@@ -6,9 +6,8 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>AppGastos - Iniciar Sesión</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         rel="stylesheet" />
     <script>
         tailwind.config = {
@@ -21,6 +20,7 @@
                         "surface": "#ffffff",
                         "border-subtle": "#e2e8f0",
                         "danger": "#ef4444",
+                        "success": "#10b981",
                     },
                     fontFamily: { "display": ["Inter"] },
                     borderRadius: { "DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px" },
@@ -36,48 +36,129 @@
 </head>
 
 <body class="bg-background-light font-display min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 p-8">
-        <div class="text-center mb-8">
-            <div
-                class="size-16 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 mx-auto mb-4">
-                <span class="material-symbols-outlined text-primary text-3xl">account_balance_wallet</span>
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+        <div class="p-8 pb-0">
+            <div class="text-center mb-6">
+                <div
+                    class="size-16 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 mx-auto mb-4">
+                    <i data-lucide="wallet" class="text-primary w-8 h-8"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-900">AppGastos</h1>
+                <p class="text-sm text-slate-500 mt-1" id="subtitle">Inicia sesión para continuar</p>
             </div>
-            <h1 class="text-2xl font-bold text-slate-900">Bienvenido a AppGastos</h1>
-            <p class="text-sm text-slate-500 mt-2">Por favor inicia sesión para continuar</p>
+
+            <div class="flex gap-2 p-1 bg-slate-100 rounded-lg mb-6">
+                <button onclick="showLogin()" id="tab-login"
+                    class="flex-1 text-xs font-bold uppercase tracking-wider py-2.5 rounded-md bg-white shadow-sm text-primary transition">
+                    Iniciar Sesión
+                </button>
+                <button onclick="showRegister()" id="tab-register"
+                    class="flex-1 text-xs font-bold uppercase tracking-wider py-2.5 rounded-md text-slate-500 hover:text-slate-700 transition">
+                    Registrarse
+                </button>
+            </div>
         </div>
 
-        <form id="login-form" class="space-y-5">
+        <form id="login-form" class="px-8 pb-8 space-y-5">
             <div class="space-y-1">
                 <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Usuario</label>
-                <input required id="username" type="text"
+                <input required id="login-username" type="text"
                     class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
                     placeholder="admin">
             </div>
             <div class="space-y-1">
                 <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Contraseña</label>
-                <input required id="password" type="password"
+                <input required id="login-password" type="password"
                     class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
                     placeholder="••••••••">
             </div>
 
-            <div id="error-message"
+            <div id="login-error"
                 class="hidden bg-danger/10 text-danger text-sm font-semibold rounded-lg p-3 text-center"></div>
 
-            <button type="submit" class="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-lg mt-6">
+            <button type="submit"
+                class="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-lg mt-2 hover:bg-primary/90 transition">
                 Ingresar
+            </button>
+        </form>
+
+        <form id="register-form" class="px-8 pb-8 space-y-5 hidden">
+            <div class="space-y-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Usuario</label>
+                <input required id="reg-username" type="text"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
+                    placeholder="Elige un nombre de usuario">
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Contraseña</label>
+                <input required id="reg-password" type="password" minlength="6"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
+                    placeholder="Mínimo 6 caracteres">
+            </div>
+            <div class="space-y-1">
+                <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Confirmar Contraseña</label>
+                <input required id="reg-confirm" type="password"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
+                    placeholder="Repite tu contraseña">
+            </div>
+
+            <div id="register-error"
+                class="hidden bg-danger/10 text-danger text-sm font-semibold rounded-lg p-3 text-center"></div>
+
+            <div id="register-success"
+                class="hidden bg-success/10 text-success text-sm font-semibold rounded-lg p-3 text-center"></div>
+
+            <button type="submit"
+                class="w-full bg-success text-white font-bold py-4 rounded-xl shadow-lg mt-2 hover:bg-success/90 transition">
+                Crear Cuenta
             </button>
         </form>
     </div>
 
     <script>
+        const API_URL = 'http://localhost:3000';
+
+        lucide.createIcons();
+
+        function showLogin() {
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('register-form').classList.add('hidden');
+            document.getElementById('tab-login').className = 'flex-1 text-xs font-bold uppercase tracking-wider py-2.5 rounded-md bg-white shadow-sm text-primary transition';
+            document.getElementById('tab-register').className = 'flex-1 text-xs font-bold uppercase tracking-wider py-2.5 rounded-md text-slate-500 hover:text-slate-700 transition';
+            document.getElementById('subtitle').innerText = 'Inicia sesión para continuar';
+            clearErrors();
+        }
+
+        function showRegister() {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('register-form').classList.remove('hidden');
+            document.getElementById('tab-register').className = 'flex-1 text-xs font-bold uppercase tracking-wider py-2.5 rounded-md bg-white shadow-sm text-primary transition';
+            document.getElementById('tab-login').className = 'flex-1 text-xs font-bold uppercase tracking-wider py-2.5 rounded-md text-slate-500 hover:text-slate-700 transition';
+            document.getElementById('subtitle').innerText = 'Crea tu cuenta nueva';
+            clearErrors();
+        }
+
+        function clearErrors() {
+            document.getElementById('login-error').classList.add('hidden');
+            document.getElementById('register-error').classList.add('hidden');
+            document.getElementById('register-success').classList.add('hidden');
+        }
+
+        function showError(elementId, message) {
+            const el = document.getElementById(elementId);
+            el.innerText = message;
+            el.classList.remove('hidden');
+        }
+
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('error-message');
+            clearErrors();
+
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
 
             try {
-                const res = await fetch('http://localhost:3000/auth/login', {
+                const res = await fetch(`${API_URL}/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
@@ -86,16 +167,53 @@
                 const data = await res.json();
 
                 if (!res.ok) {
-                    errorDiv.innerText = data.error || 'Credenciales inválidas';
-                    errorDiv.classList.remove('hidden');
+                    showError('login-error', data.message || data.error || 'Credenciales inválidas');
                 } else {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
                     window.location.href = '/';
                 }
             } catch (err) {
-                errorDiv.innerText = 'Error del servidor.';
-                errorDiv.classList.remove('hidden');
+                showError('login-error', 'Error del servidor. Intenta de nuevo.');
+            }
+        });
+
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearErrors();
+
+            const username = document.getElementById('reg-username').value.trim();
+            const password = document.getElementById('reg-password').value;
+            const confirm = document.getElementById('reg-confirm').value;
+
+            if (password !== confirm) {
+                showError('register-error', 'Las contraseñas no coinciden');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('register-error', 'La contraseña debe tener al menos 6 caracteres');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    showError('register-error', data.message || 'Error al registrar');
+                } else {
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+                    window.location.href = '/';
+                }
+            } catch (err) {
+                showError('register-error', 'Error del servidor. Intenta de nuevo.');
             }
         });
     </script>

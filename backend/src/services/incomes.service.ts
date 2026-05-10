@@ -1,5 +1,5 @@
 import pool from '../db/pool';
-import { Income, CreateIncomeDTO, UpdateIncomeDTO } from '../models/Income';
+import { Income, CreateIncomeDTO, UpdateIncomeDTO, INCOME_FIELDS } from '../models/Income';
 
 export class IncomesService {
     static async getAll(userId: number): Promise<Income[]> {
@@ -25,5 +25,32 @@ export class IncomesService {
     static async remove(id: number, userId: number): Promise<boolean> {
         const { rowCount } = await pool.query('DELETE FROM incomes WHERE id = $1 AND user_id = $2', [id, userId]);
         return (rowCount ?? 0) > 0;
+    }
+
+    static async update(id: number, userId: number, data: UpdateIncomeDTO): Promise<Income | null> {
+        const fields = [];
+        const values = [];
+        let idx = 1;
+
+        for (const key of INCOME_FIELDS) {
+            if ((data as any)[key] !== undefined) {
+                fields.push(`${key} = $${idx}`);
+                values.push((data as any)[key]);
+                idx++;
+            }
+        }
+
+        if (fields.length === 0) return this.getById(id, userId);
+
+        values.push(id, userId);
+        const query = `
+            UPDATE incomes
+            SET ${fields.join(', ')}
+            WHERE id = $${idx} AND user_id = $${idx + 1}
+            RETURNING *
+        `;
+
+        const { rows } = await pool.query(query, values);
+        return rows[0] || null;
     }
 }
