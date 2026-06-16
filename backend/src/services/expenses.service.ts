@@ -2,7 +2,20 @@ import pool, { getClient } from '../db/pool';
 import { Expense, CreateExpenseDTO, UpdateExpenseDTO, EXPENSE_FIELDS } from '../models/Expense';
 
 export class ExpensesService {
+    private static getCurrentMonth(): string {
+        return new Date().toISOString().slice(0, 7);
+    }
+
+    private static async autoResetMonth(userId: number): Promise<void> {
+        const currentMonth = this.getCurrentMonth();
+        await pool.query(
+            `UPDATE expenses SET is_paid = false WHERE user_id = $1 AND is_paid = true AND last_paid_month != $2`,
+            [userId, currentMonth]
+        );
+    }
+
     static async getAll(userId: number): Promise<Expense[]> {
+        await this.autoResetMonth(userId);
         const { rows } = await pool.query(
             'SELECT * FROM expenses WHERE user_id = $1 ORDER BY created_at DESC',
             [userId]
@@ -56,6 +69,7 @@ export class ExpensesService {
             await client.query('BEGIN');
 
             if (data.is_paid === true && existing.is_paid === false) {
+                const currentMonth = this.getCurrentMonth();
                 await client.query(
                     `INSERT INTO payment_history (expense_id, amount_paid, concept, user_id) VALUES ($1, $2, $3, $4)`,
                     [id, existing.monthly_payment, existing.name, userId]
@@ -66,8 +80,13 @@ export class ExpensesService {
                     [existing.monthly_payment, userId]
                 );
 
+                await client.query(
+                    `UPDATE expenses SET last_paid_month = $1 WHERE id = $2`,
+                    [currentMonth, id]
+                );
+
                 if (data.total_debt === undefined) {
-                    const newDebt = parseFloat(existing.total_debt as any) - parseFloat(existing.monthly_payment as any);
+                    const newDebt = existing.total_debt - existing.monthly_payment;
                     data.total_debt = newDebt < 0 ? 0 : newDebt;
                 }
             } else if (data.is_paid === false && existing.is_paid === true) {
@@ -83,7 +102,7 @@ export class ExpensesService {
                 );
 
                 if (data.total_debt === undefined) {
-                    data.total_debt = parseFloat(existing.total_debt as any) + parseFloat(existing.monthly_payment as any);
+                    data.total_debt = existing.total_debt + existing.monthly_payment;
                 }
             }
 

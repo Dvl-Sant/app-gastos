@@ -3,8 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { AuthService } from '../services/auth.service';
 import { JwtPayload } from '../models/User';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_appgastos_key_123';
+import { SECRET } from '../config/env';
 
 export class AuthController {
     static async login(req: Request, res: Response, next: NextFunction) {
@@ -26,7 +25,7 @@ export class AuthController {
             }
 
             const payload: JwtPayload = { id: user.id, username: user.username };
-            const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+            const token = jwt.sign(payload, SECRET, { expiresIn: '24h' });
 
             res.json({ status: 'success', data: { token, user: { id: user.id, username: user.username } } });
         } catch (error) {
@@ -55,7 +54,7 @@ export class AuthController {
             const user = await AuthService.createUser(username, passwordHash);
 
             const payload: JwtPayload = { id: user.id, username: user.username };
-            const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+            const token = jwt.sign(payload, SECRET, { expiresIn: '24h' });
 
             res.status(201).json({ status: 'success', data: { token, user: { id: user.id, username: user.username } } });
         } catch (error) {

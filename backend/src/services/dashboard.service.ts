@@ -2,11 +2,18 @@ import pool from '../db/pool';
 
 export class DashboardService {
    static async getSummary(userId: number) {
+      const currentMonth = new Date().toISOString().slice(0, 7);
+
+      await pool.query(
+         `UPDATE expenses SET is_paid = false WHERE user_id = $1 AND is_paid = true AND last_paid_month != $2`,
+         [userId, currentMonth]
+      );
+
       const query = `
       WITH income_calc AS (
          SELECT COALESCE(SUM(
             CASE 
-               WHEN frequency = 'semanal' THEN amount * 4 
+               WHEN frequency = 'semanal' THEN amount * 4.33 
                WHEN frequency = 'quincenal' THEN amount * 2 
                ELSE amount 
             END
@@ -32,10 +39,12 @@ export class DashboardService {
       const { rows } = await pool.query(query, [userId]);
       const result = rows[0];
 
-      const baseSavings = parseFloat(result.base_savings || '0');
-      const incomes = parseFloat(result.total_incomes_monthly || '0');
+      const baseSavings = result.base_savings || 0;
+      const incomes = result.total_incomes_monthly || 0;
+      const paidThisMonth = result.paid || 0;
+      const totalMonthlyPayment = result.total_monthly_payment || 0;
 
-      const dynamicSavings = baseSavings;
+      const availableBalance = baseSavings + incomes - totalMonthlyPayment;
 
       const { rows: unpaidExpenses } = await pool.query(
          'SELECT * FROM expenses WHERE is_paid = false AND user_id = $1 ORDER BY due_date ASC',
@@ -44,10 +53,10 @@ export class DashboardService {
 
       let recommendation = null;
       for (const exp of unpaidExpenses) {
-         if (parseFloat(exp.monthly_payment) <= dynamicSavings) {
+         if (exp.monthly_payment <= availableBalance) {
             recommendation = {
                name: exp.name,
-               amount: parseFloat(exp.monthly_payment),
+               amount: exp.monthly_payment,
                due_date: exp.due_date
             };
             break;
@@ -55,10 +64,12 @@ export class DashboardService {
       }
 
       return {
-         total_savings: dynamicSavings,
-         total_monthly_payment: parseFloat(result.total_monthly_payment || '0'),
-         total_debt: parseFloat(result.total_debt || '0'),
+         total_savings: baseSavings,
+         total_monthly_payment: totalMonthlyPayment,
+         total_debt: result.total_debt || 0,
          total_incomes: incomes,
+         total_paid: paidThisMonth,
+         available_balance: availableBalance,
          recommendation
       };
    }

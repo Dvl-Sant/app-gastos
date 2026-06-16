@@ -1,7 +1,10 @@
 import { Pool, PoolClient } from 'pg';
 import dotenv from 'dotenv';
+import pg from 'pg';
 
 dotenv.config();
+
+pg.types.setTypeParser(pg.types.builtins.NUMERIC, (val: string) => val === null ? null : parseFloat(val));
 
 const pool: Pool = new Pool({
     host: process.env.DB_HOST || 'localhost',

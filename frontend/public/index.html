@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="">
 
 <head>
   <meta charset="utf-8" />
@@ -7,9 +7,13 @@
   <title>AppGastos - Panel Financiero</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script>
+    if (localStorage.getItem('darkMode') === 'true') {
+      document.documentElement.classList.add('dark');
+    }
     tailwind.config = {
       darkMode: "class",
       theme: {
@@ -17,7 +21,8 @@
           colors: {
             "primary": "#1772da",
             "background-light": "#f6f7f8",
-            "background-dark": "#111821",
+            "background-dark": "#0f172a",
+            "surface-dark": "#1e293b",
             "surface": "#ffffff",
             "border-subtle": "#e2e8f0",
             "success": "#10b981",
@@ -59,37 +64,42 @@
   </style>
 </head>
 
-<body class="bg-background-light text-slate-900 font-display min-h-screen flex flex-col">
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen flex flex-col transition-colors">
   <header
-    class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border-subtle px-4 py-4 flex items-center justify-between">
+    class="sticky top-0 z-50 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border-b border-border-subtle dark:border-slate-700 px-4 py-4 flex items-center justify-between transition-colors">
     <div class="flex items-center gap-3">
       <div
         class="size-10 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 overflow-hidden">
         <i data-lucide="user" class="text-primary w-5 h-5"></i>
       </div>
       <div>
-        <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Panel</p>
-        <h1 class="text-base font-bold text-slate-900">Mis Gastos</h1>
+        <p class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">Panel</p>
+        <h1 class="text-base font-bold text-slate-900 dark:text-slate-100">Mis Gastos</h1>
       </div>
     </div>
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-3">
+      <button onclick="toggleDarkMode()" class="text-slate-500 dark:text-slate-300 hover:text-primary bg-slate-50 dark:bg-slate-800 p-2 rounded-xl transition-colors" aria-label="Cambiar tema">
+        <i data-lucide="sun" class="w-5 h-5 dark:hidden"></i>
+        <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+      </button>
       <div class="flex flex-col items-end">
-        <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Hoy es</p>
-        <h2 class="text-sm font-bold text-slate-900 capitalize" id="current-date-display"></h2>
+        <p class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">Hoy es</p>
+        <h2 class="text-sm font-bold text-slate-900 dark:text-slate-100 capitalize" id="current-date-display"></h2>
       </div>
       <a href="/history.html"
-        class="text-primary font-bold bg-primary/10 px-4 py-2 rounded-xl transition-colors text-sm flex items-center gap-1 hover:bg-primary/20">
+        class="text-primary font-bold bg-primary/10 dark:bg-primary/20 px-4 py-2 rounded-xl transition-colors text-sm flex items-center gap-1 hover:bg-primary/20">
         <i data-lucide="history" class="w-4 h-4"></i> Historial
       </a>
-      <button onclick="logout()" class="text-slate-400 hover:text-danger bg-slate-50 p-2 rounded-xl transition-colors">
+      <button onclick="logout()" class="text-slate-400 hover:text-danger bg-slate-50 dark:bg-slate-800 p-2 rounded-xl transition-colors" aria-label="Cerrar sesión">
         <i data-lucide="log-out" class="w-5 h-5"></i>
       </button>
     </div>
   </header>
 
   <main class="flex-1 overflow-y-auto px-4 py-6 space-y-6 hide-scrollbar relative z-0">
+    <!-- Savings + Cash Flow -->
     <section>
-      <div class="relative overflow-hidden rounded-xl bg-blue-50 border border-primary/10 p-6 shadow-sm">
+      <div class="relative overflow-hidden rounded-xl bg-blue-50 dark:bg-surface-dark border border-primary/10 dark:border-slate-700 p-6 shadow-sm transition-colors">
         <div class="absolute -right-4 -top-4 size-24 bg-primary/5 rounded-full"></div>
         <div class="relative z-10 flex justify-between">
           <div>
@@ -97,42 +107,138 @@
             <div class="mt-2 flex items-baseline gap-2">
               <h2 class="text-3xl font-extrabold tracking-tight text-primary" id="dashboard-savings">$0.00</h2>
             </div>
-            <p class="text-xs text-slate-500 mt-1 font-medium italic" id="dashboard-savings-breakdown">Calculando
-              proyecciones...</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium italic" id="dashboard-savings-breakdown">Calculando proyecciones...</p>
           </div>
           <div class="flex flex-col gap-2 relative z-10">
             <button onclick="openIncomeModal()"
-              class="text-sm font-bold flex items-center gap-1 bg-white text-primary px-3 py-1 rounded-full shadow-sm hover:shadow-md transition">
+              class="text-sm font-bold flex items-center gap-1 bg-white dark:bg-slate-700 text-primary px-3 py-1 rounded-full shadow-sm hover:shadow-md transition">
               <i data-lucide="dollar-sign" class="w-4 h-4"></i> Nuevo Ingreso
             </button>
             <button onclick="openSavingsModal()"
-              class="text-primary mt-2 self-end hover:bg-white p-1 rounded-full transition">
+              class="text-primary mt-2 self-end hover:bg-white dark:hover:bg-slate-700 p-1 rounded-full transition">
               <i data-lucide="pencil" class="w-5 h-5"></i>
             </button>
           </div>
         </div>
       </div>
-    </section>
 
-    <section>
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-bold text-slate-800">Gestión de Deudas</h3>
-        <div class="flex items-center gap-2">
-          <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Ordenar:</span>
-          <button onclick="sortExpenses('due_date')" class="text-primary text-xs font-bold flex items-center gap-1 bg-primary/5 px-3 py-1 rounded-full hover:bg-primary/10 transition" title="Fecha de vencimiento">
-            <i data-lucide="calendar" class="w-3 h-3"></i> Fecha <span id="sort-icon-due_date"></span>
-          </button>
-          <button onclick="openExpenseModal()"
-            class="text-primary text-sm font-bold flex items-center gap-1 bg-primary/5 px-3 py-1 rounded-full">
-            <i data-lucide="plus" class="w-4 h-4"></i> Agregar
-          </button>
+      <!-- Cash Flow Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+        <div class="bg-white dark:bg-surface-dark rounded-xl border border-border-subtle dark:border-slate-700 p-4 shadow-sm transition-colors">
+          <div class="flex items-center gap-2 mb-1">
+            <i data-lucide="trending-up" class="w-4 h-4 text-success"></i>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Ingresos/mes</p>
+          </div>
+          <p class="text-lg font-extrabold text-success" id="flow-incomes">$0.00</p>
+        </div>
+        <div class="bg-white dark:bg-surface-dark rounded-xl border border-border-subtle dark:border-slate-700 p-4 shadow-sm transition-colors">
+          <div class="flex items-center gap-2 mb-1">
+            <i data-lucide="trending-down" class="w-4 h-4 text-danger"></i>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Por Pagar</p>
+          </div>
+          <p class="text-lg font-extrabold text-danger" id="flow-unpaid">$0.00</p>
+        </div>
+        <div class="bg-white dark:bg-surface-dark rounded-xl border border-border-subtle dark:border-slate-700 p-4 shadow-sm transition-colors">
+          <div class="flex items-center gap-2 mb-1">
+            <i data-lucide="circle-check" class="w-4 h-4 text-primary"></i>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Pagado</p>
+          </div>
+          <p class="text-lg font-extrabold text-primary" id="flow-paid">$0.00</p>
+        </div>
+        <div class="bg-white dark:bg-surface-dark rounded-xl border border-border-subtle dark:border-slate-700 p-4 shadow-sm transition-colors">
+          <div class="flex items-center gap-2 mb-1">
+            <i data-lucide="wallet" class="w-4 h-4 text-slate-600 dark:text-slate-300"></i>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Disponible</p>
+          </div>
+          <p class="text-lg font-extrabold text-slate-900 dark:text-slate-100" id="flow-available">$0.00</p>
         </div>
       </div>
-      <div class="bg-white rounded-xl border border-border-subtle overflow-hidden shadow-sm">
+
+      <!-- Cash Flow Bar -->
+      <div class="bg-white dark:bg-surface-dark rounded-xl border border-border-subtle dark:border-slate-700 p-4 shadow-sm mt-3 transition-colors">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Flujo del Mes</p>
+          <span class="text-[10px] text-slate-400" id="flow-month-label"></span>
+        </div>
+        <div class="flex h-4 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700">
+          <div id="bar-income" class="bg-success transition-all duration-500" style="width: 0%"></div>
+          <div id="bar-unpaid" class="bg-danger transition-all duration-500" style="width: 0%"></div>
+          <div id="bar-paid" class="bg-primary transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-between mt-2 text-[10px] text-slate-500 dark:text-slate-400">
+          <span class="flex items-center gap-1"><span class="size-2 rounded-full bg-success"></span> Ingresos</span>
+          <span class="flex items-center gap-1"><span class="size-2 rounded-full bg-danger"></span> Por Pagar</span>
+          <span class="flex items-center gap-1"><span class="size-2 rounded-full bg-primary"></span> Pagado</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white dark:bg-surface-dark rounded-xl border border-border-subtle dark:border-slate-700 p-6 shadow-sm transition-colors">
+          <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4">Gastos por Categoría</h3>
+          <div class="relative" style="height: 200px;">
+            <canvas id="chart-categories"></canvas>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-surface-dark rounded-xl border border-border-subtle dark:border-slate-700 p-6 shadow-sm transition-colors">
+          <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 mb-4">Vencimientos del Mes</h3>
+          <div class="relative" style="height: 200px;">
+            <canvas id="chart-due-dates"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Expenses Section -->
+    <section>
+      <div class="flex flex-col gap-3 mb-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold text-slate-800 dark:text-slate-200">Gestión de Deudas</h3>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider hidden sm:inline">Ordenar:</span>
+            <button onclick="sortExpenses('due_date')" class="text-primary text-xs font-bold flex items-center gap-1 bg-primary/5 dark:bg-primary/10 px-3 py-1 rounded-full hover:bg-primary/10 transition" title="Fecha de vencimiento">
+              <i data-lucide="calendar" class="w-3 h-3"></i> Fecha <span id="sort-icon-due_date"></span>
+            </button>
+            <button onclick="openExpenseModal()"
+              class="text-primary text-sm font-bold flex items-center gap-1 bg-primary/5 dark:bg-primary/10 px-3 py-1 rounded-full">
+              <i data-lucide="plus" class="w-4 h-4"></i> Agregar
+            </button>
+          </div>
+        </div>
+        <!-- Search & Filter -->
+        <div class="flex gap-2 flex-wrap">
+          <div class="flex-1 min-w-[180px] relative">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="expense-search" placeholder="Buscar gasto..."
+              class="w-full bg-white dark:bg-surface-dark border border-border-subtle dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm outline-none focus:border-primary transition-colors"
+              oninput="filterExpenses()">
+          </div>
+          <select id="expense-filter-category" onchange="filterExpenses()"
+            class="bg-white dark:bg-surface-dark border border-border-subtle dark:border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary transition-colors">
+            <option value="">Todas las categorías</option>
+            <option>Vivienda y Servicios</option>
+            <option>Transporte</option>
+            <option>Comida</option>
+            <option>Entretenimiento</option>
+            <option>Pago de Deudas</option>
+            <option>Otro</option>
+          </select>
+          <select id="expense-filter-status" onchange="filterExpenses()"
+            class="bg-white dark:bg-surface-dark border border-border-subtle dark:border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary transition-colors">
+            <option value="">Todos</option>
+            <option value="paid">Pagados</option>
+            <option value="unpaid">Pendientes</option>
+            <option value="overdue">Vencidos</option>
+          </select>
+        </div>
+      </div>
+      <div class="bg-white dark:bg-surface-dark rounded-xl border border-border-subtle dark:border-slate-700 overflow-hidden shadow-sm transition-colors">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm">
             <thead>
-              <tr class="bg-primary/5 text-primary">
+              <tr class="bg-primary/5 dark:bg-primary/10 text-primary">
                 <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest w-12 text-center">Estado</th>
                 <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest">Concepto</th>
                 <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right cursor-pointer select-none hover:text-primary/70" onclick="sortExpenses('monthly_payment')">
@@ -144,16 +250,19 @@
                 <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody id="expenses-table-body" class="divide-y divide-slate-50">
+            <tbody id="expenses-table-body" class="divide-y divide-slate-50 dark:divide-slate-700/50">
             </tbody>
-            <tfoot class="bg-slate-50/50 border-t border-border-subtle">
-              <tr class="text-slate-900">
+            <tbody id="expenses-empty" class="hidden">
+              <tr>
+                <td colspan="5" class="px-4 py-12 text-center text-slate-400 dark:text-slate-500 italic">No hay gastos que coincidan con tu búsqueda.</td>
+              </tr>
+            </tbody>
+            <tfoot class="bg-slate-50/50 dark:bg-slate-800/50 border-t border-border-subtle dark:border-slate-700">
+              <tr class="text-slate-900 dark:text-slate-100">
                 <td class="px-4 py-4"></td>
-                <td class="px-4 py-4 font-bold text-right" style="padding-right: 0px">Total</td>
-                <td class="px-4 py-4 text-right text-danger font-extrabold text-base" id="dashboard-total-payment">$0.00
-                </td>
-                <td class="px-4 py-4 text-right font-extrabold text-base text-slate-900" id="dashboard-total-debt">$0.00
-                </td>
+                <td class="px-4 py-4 font-bold text-right pr-0">Total</td>
+                <td class="px-4 py-4 text-right text-danger font-extrabold text-base" id="dashboard-total-payment">$0.00</td>
+                <td class="px-4 py-4 text-right font-extrabold text-base text-slate-900 dark:text-slate-100" id="dashboard-total-debt">$0.00</td>
                 <td></td>
               </tr>
             </tfoot>
@@ -162,87 +271,79 @@
       </div>
     </section>
 
+    <!-- Analytics + Incomes -->
     <section>
-      <h3 class="text-lg font-bold mb-4 text-slate-800">Análisis de Gastos (Categorías)</h3>
-      <div class="bg-white p-6 rounded-xl border border-border-subtle shadow-sm flex flex-col gap-4"
+      <div class="bg-white dark:bg-surface-dark p-6 rounded-xl border border-border-subtle dark:border-slate-700 shadow-sm flex flex-col gap-4 mb-6 transition-colors"
         id="analytics-container">
       </div>
-      <section>
-        <h3 class="text-lg font-bold mb-4 text-slate-800">Mis Ingresos</h3>
-        <div class="bg-white rounded-xl border border-border-subtle overflow-hidden shadow-sm">
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-              <thead>
-                <tr class="bg-primary/5 text-primary">
-                  <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest">Fuente</th>
-                  <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Monto</th>
-                  <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Frecuencia</th>
-                  <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="incomes-table-body" class="divide-y divide-slate-50">
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+    </section>
 
+    <section>
+      <h3 class="text-lg font-bold mb-4 text-slate-800 dark:text-slate-200">Mis Ingresos</h3>
+      <div class="bg-white dark:bg-surface-dark rounded-xl border border-border-subtle dark:border-slate-700 overflow-hidden shadow-sm transition-colors">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="bg-primary/5 dark:bg-primary/10 text-primary">
+                <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest">Fuente</th>
+                <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Monto</th>
+                <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Frecuencia</th>
+                <th class="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="incomes-table-body" class="divide-y divide-slate-50 dark:divide-slate-700/50">
+            </tbody>
+            <tbody id="incomes-empty" class="hidden">
+              <tr>
+                <td colspan="4" class="px-4 py-8 text-center text-slate-400 dark:text-slate-500 italic">No hay ingresos registrados. ¡Agrega tu primer ingreso!</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   </main>
 
   <nav
-    class="sticky bottom-0 bg-white border-t border-border-subtle px-6 py-3 flex items-center justify-center gap-8 pb-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] z-10">
+    class="sticky bottom-0 bg-white dark:bg-surface-dark border-t border-border-subtle dark:border-slate-700 px-6 py-3 flex items-center justify-center gap-8 pb-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] z-10 transition-colors">
     <button onclick="openExpenseModal()"
-      class="relative -top-6 size-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/40 ring-4 ring-background-light">
+      class="relative -top-6 size-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/40 ring-4 ring-background-light dark:ring-background-dark" aria-label="Agregar gasto">
       <i data-lucide="plus" class="w-8 h-8"></i>
     </button>
   </nav>
 
   <!-- Expense Modal -->
   <div id="expense-modal" class="fixed inset-0 z-50 bg-black/50 items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-      <div class="flex items-center justify-between p-5 border-b border-slate-100">
-        <button onclick="closeExpenseModal()" class="text-slate-400 hover:text-primary"><i data-lucide="x"
-            class="w-5 h-5"></i></button>
-        <h1 class="text-lg font-bold text-slate-900" id="modal-title">Agregar Nuevo Gasto</h1>
+    <div class="w-full max-w-md bg-white dark:bg-surface-dark rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 transition-colors">
+      <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
         <div></div>
+        <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100" id="modal-title">Agregar Nuevo Gasto</h1>
+        <button onclick="closeExpenseModal()" class="text-slate-400 hover:text-primary" aria-label="Cerrar"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
       <form id="expense-form" class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
         <input type="hidden" id="expense-id">
         <input type="hidden" id="expense-type" value="recurrent">
-
-        <div class="flex gap-2 p-1 bg-slate-100 rounded-lg mb-4">
-          <button type="button" onclick="setExpenseType('recurrent')" id="btn-type-recurrent"
-            class="flex-1 text-xs font-bold uppercase tracking-wider py-2 rounded-md bg-white shadow-sm text-primary transition">
-            Recurrente</button>
-          <button type="button" onclick="setExpenseType('unique')" id="btn-type-unique"
-            class="flex-1 text-xs font-bold uppercase tracking-wider py-2 rounded-md text-slate-500 hover:text-slate-700 transition">
-            Único</button>
+        <div class="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg mb-4">
+          <button type="button" onclick="setExpenseType('recurrent')" id="btn-type-recurrent" class="flex-1 text-xs font-bold uppercase tracking-wider py-2 rounded-md bg-white dark:bg-slate-700 shadow-sm text-primary transition">Recurrente</button>
+          <button type="button" onclick="setExpenseType('unique')" id="btn-type-unique" class="flex-1 text-xs font-bold uppercase tracking-wider py-2 rounded-md text-slate-500 hover:text-slate-700 transition">Único</button>
         </div>
-
         <div class="space-y-1">
-          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del Concepto</label>
-          <input required id="expense-name"
-            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
-            placeholder="Ej. Préstamo del auto">
+          <label for="expense-name" class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Nombre del Concepto</label>
+          <input required id="expense-name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-primary text-slate-900 dark:text-slate-100" placeholder="Ej. Préstamo del auto">
         </div>
         <div class="grid grid-cols-2 gap-4" id="row-dates">
           <div class="space-y-1" id="wrap-billing">
-            <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Fecha de Facturación</label>
-            <input required id="expense-billing" type="number" min="1" max="31"
-              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
-              placeholder="1-31">
+            <label for="expense-billing" class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Fecha de Facturación</label>
+            <input required id="expense-billing" type="number" min="1" max="31" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-primary text-slate-900 dark:text-slate-100" placeholder="1-31">
           </div>
           <div class="space-y-1" id="wrap-due">
-            <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Fecha de Pago</label>
-            <input required id="expense-due" type="number" min="1" max="31"
-              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
-              placeholder="1-31">
+            <label for="expense-due" class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Fecha de Pago</label>
+            <input required id="expense-due" type="number" min="1" max="31" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-primary text-slate-900 dark:text-slate-100" placeholder="1-31">
           </div>
         </div>
         <div class="space-y-1">
-          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Categoría</label>
-          <select required id="expense-category"
-            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary">
+          <label for="expense-category" class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Categoría</label>
+          <select required id="expense-category" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-primary text-slate-900 dark:text-slate-100">
             <option>Vivienda y Servicios</option>
             <option>Transporte</option>
             <option>Comida</option>
@@ -253,94 +354,83 @@
         </div>
         <div class="grid grid-cols-2 gap-4" id="wrap-amounts">
           <div class="space-y-1">
-            <label class="text-xs font-bold uppercase tracking-wider text-accent-red" id="lbl-monthly">Pago Mensual
-            </label>
-            <input required id="expense-monthly" step="0.01" type="number"
-              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none text-accent-red font-semibold"
-              placeholder="0.00">
+            <label for="expense-monthly" class="text-xs font-bold uppercase tracking-wider text-accent-red" id="lbl-monthly">Pago Mensual</label>
+            <input required id="expense-monthly" step="0.01" type="number" min="0" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none text-accent-red font-semibold text-slate-900 dark:text-slate-100" placeholder="0.00">
           </div>
           <div class="space-y-1" id="wrap-total-debt">
-            <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Deuda Total</label>
-            <input required id="expense-total" step="0.01" type="number"
-              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none" placeholder="0.00">
+            <label for="expense-total" class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Deuda Total</label>
+            <input required id="expense-total" step="0.01" type="number" min="0" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none text-slate-900 dark:text-slate-100" placeholder="0.00">
           </div>
         </div>
-        <button type="submit"
-          class="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-lg mt-4">Guardar</button>
+        <button type="submit" class="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-lg mt-4 hover:bg-primary/90 transition">Guardar</button>
       </form>
     </div>
   </div>
 
   <!-- Savings Modal -->
   <div id="savings-modal" class="fixed inset-0 z-50 bg-black/50 items-center justify-center p-4">
-    <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-      <div class="flex items-center justify-between p-5 border-b border-slate-100">
-        <button onclick="closeSavingsModal()" class="text-slate-400 hover:text-primary"><i data-lucide="x"
-            class="w-5 h-5"></i></button>
-        <h1 class="text-lg font-bold text-slate-900">Actualizar Ahorros</h1>
+    <div class="w-full max-w-sm bg-white dark:bg-surface-dark rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 transition-colors">
+      <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
         <div></div>
+        <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100">Actualizar Ahorros</h1>
+        <button onclick="closeSavingsModal()" class="text-slate-400 hover:text-primary" aria-label="Cerrar"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
       <form id="savings-form" class="p-6 space-y-4">
         <div class="space-y-1">
-          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Monto Total</label>
-          <input required id="savings-amount" step="0.01" type="number"
-            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none" placeholder="0.00">
+          <label for="savings-amount" class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Monto Total</label>
+          <input required id="savings-amount" step="0.01" type="number" min="0" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none text-slate-900 dark:text-slate-100" placeholder="0.00">
         </div>
         <div class="space-y-1">
-          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Moneda</label>
-          <input required id="savings-currency" type="text" maxlength="3"
-            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none" placeholder="USD">
+          <label for="savings-currency" class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Moneda</label>
+          <select required id="savings-currency" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none text-slate-900 dark:text-slate-100">
+            <option value="USD">USD - Dólar</option>
+            <option value="MXN">MXN - Peso Mexicano</option>
+            <option value="EUR">EUR - Euro</option>
+            <option value="COP">COP - Peso Colombiano</option>
+            <option value="ARS">ARS - Peso Argentino</option>
+          </select>
         </div>
-        <button type="submit" class="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-lg mt-4">Guardar
-          Ahorros</button>
+        <button type="submit" class="w-full bg-primary text-white font-bold py-4 rounded-xl shadow-lg mt-4 hover:bg-primary/90 transition">Guardar Ahorros</button>
       </form>
     </div>
   </div>
 
   <!-- Income Modal -->
   <div id="income-modal" class="fixed inset-0 z-50 bg-black/50 items-center justify-center p-4" style="display: none;">
-    <div class="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-      <div class="flex items-center justify-between p-5 border-b border-slate-100">
-        <button onclick="closeIncomeModal()" class="text-slate-400 hover:text-primary"><i data-lucide="x"
-            class="w-5 h-5"></i></button>
-        <h1 class="text-lg font-bold text-slate-900" id="income-modal-title">Registrar Ingreso</h1>
+    <div class="w-full max-w-sm bg-white dark:bg-surface-dark rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 transition-colors">
+      <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
         <div></div>
+        <h1 class="text-lg font-bold text-slate-900 dark:text-slate-100" id="income-modal-title">Registrar Ingreso</h1>
+        <button onclick="closeIncomeModal()" class="text-slate-400 hover:text-primary" aria-label="Cerrar"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
       <form id="income-form" class="p-6 space-y-4">
         <input type="hidden" id="income-id">
         <div class="space-y-1">
-          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre (Ej. Sueldo, Bono)</label>
-          <input required id="income-name" type="text"
-            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary">
+          <label for="income-name" class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Nombre (Ej. Sueldo, Bono)</label>
+          <input required id="income-name" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-primary text-slate-900 dark:text-slate-100">
         </div>
         <div class="space-y-1">
-          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Monto</label>
-          <input required id="income-amount" step="0.01" type="number"
-            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none text-success font-semibold"
-            placeholder="0.00">
+          <label for="income-amount" class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Monto</label>
+          <input required id="income-amount" step="0.01" type="number" min="0" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none text-success font-semibold text-slate-900 dark:text-slate-100" placeholder="0.00">
         </div>
         <div class="space-y-1">
-          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Frecuencia de Pago</label>
-          <select required id="income-frequency"
-            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary">
+          <label for="income-frequency" class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Frecuencia de Pago</label>
+          <select required id="income-frequency" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-primary text-slate-900 dark:text-slate-100">
             <option value="semanal">Semanal</option>
             <option value="quincenal">Quincenal</option>
             <option value="mensual">Mensual</option>
           </select>
         </div>
         <div class="space-y-1">
-          <label class="text-xs font-bold uppercase tracking-wider text-slate-500">Próximo día de Pago</label>
-          <input required id="income-next-date" type="number" min="1" max="31"
-            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-primary"
-            placeholder="1-31">
+          <label for="income-next-date" class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Próximo día de Pago</label>
+          <input required id="income-next-date" type="number" min="1" max="31" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:border-primary text-slate-900 dark:text-slate-100" placeholder="1-31">
         </div>
-        <button type="submit" class="w-full bg-success text-white font-bold py-4 rounded-xl shadow-lg mt-4">Guardar
-          Ingreso</button>
+        <button type="submit" class="w-full bg-success text-white font-bold py-4 rounded-xl shadow-lg mt-4 hover:bg-success/90 transition">Guardar Ingreso</button>
       </form>
     </div>
   </div>
 
-  <script src="/app.js?v=5"></script>
+  <script src="/app.js?v=6"></script>
 </body>
 
 </html>
