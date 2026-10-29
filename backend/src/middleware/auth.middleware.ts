@@ -1,14 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { config } from '../config';
+import pool from '../db/pool';
 import { JwtPayload } from '../models/User';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_appgastos_key_123';
 
 export interface AuthRequest extends Request {
     user?: JwtPayload;
 }
 
-export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -17,7 +17,13 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     }
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+        const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;
+        // Un JWT válido puede referirse a un usuario eliminado (p.ej. tras un
+        // reset de BD): verificar existencia devuelve 401 limpio en ese caso.
+        const { rowCount } = await pool.query('SELECT 1 FROM users WHERE id = $1', [decoded.id]);
+        if ((rowCount ?? 0) === 0) {
+            return res.status(401).json({ status: 'error', message: 'Tu sesión ya no es válida. Inicia sesión de nuevo.' });
+        }
         (req as AuthRequest).user = decoded;
         next();
     } catch (error) {

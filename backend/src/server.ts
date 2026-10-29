@@ -1,10 +1,6 @@
-import dotenv from 'dotenv';
+import { config } from './config';
 import app from './app';
 
-dotenv.config();
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.listen(config.port, () => {
+    console.log(`[Server] AppGastos API corriendo en el puerto ${config.port} (${config.nodeEnv})`);
 });

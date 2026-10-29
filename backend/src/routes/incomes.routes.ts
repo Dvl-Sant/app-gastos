@@ -6,8 +6,7 @@ import { INCOME_FIELDS } from '../models/Income';
 const router = Router();
 
 router.get('/', IncomesController.getAll);
-router.get('/:id', IncomesController.getById);
-router.post('/', validateBody(INCOME_FIELDS), IncomesController.create);
+router.post('/', validateBody(INCOME_FIELDS, ['name', 'amount', 'income_type']), IncomesController.create);
 router.put('/:id', validateBody(INCOME_FIELDS), IncomesController.update);
 router.delete('/:id', IncomesController.remove);
 

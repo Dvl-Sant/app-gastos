@@ -23,6 +23,12 @@ export class AuthService {
                 [newUser.id, 'USD']
             );
 
+            // Cuenta por defecto para gastos en efectivo
+            await client.query(
+                "INSERT INTO accounts (user_id, name, type, balance) VALUES ($1, 'Efectivo', 'efectivo', 0)",
+                [newUser.id]
+            );
+
             await client.query('COMMIT');
             return newUser;
         } catch (error) {

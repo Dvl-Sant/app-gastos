@@ -6,12 +6,7 @@ export class AnalyticsController {
     static async getAnalytics(req: AuthRequest, res: Response, next: NextFunction) {
         try {
             const byCategory = await AnalyticsService.getByCategory(req.user!.id);
-            const byDueDate = await AnalyticsService.getByDueDate(req.user!.id);
-
-            res.json({
-                byCategory,
-                byDueDate
-            });
+            res.json({ byCategory });
         } catch (error) {
             next(error);
         }

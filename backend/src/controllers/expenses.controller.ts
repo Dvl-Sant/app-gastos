@@ -5,18 +5,20 @@ import { ExpensesService } from '../services/expenses.service';
 export class ExpensesController {
     static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const expenses = await ExpensesService.getAll(req.user!.id);
-            res.json(expenses);
+            res.json(await ExpensesService.list(req.user!.id));
         } catch (error) {
             next(error);
         }
     }
 
-    static async getById(req: AuthRequest, res: Response, next: NextFunction) {
+    static async getCalendar(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const expense = await ExpensesService.getById(Number(req.params.id), req.user!.id);
-            if (!expense) return res.status(404).json({ status: 'error', message: 'Gasto no encontrado' });
-            res.json(expense);
+            const from = String(req.query.from || '');
+            const to = String(req.query.to || '');
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+                return res.status(400).json({ status: 'error', message: 'from y to deben tener formato YYYY-MM-DD' });
+            }
+            res.json(await ExpensesService.getCalendar(req.user!.id, from, to));
         } catch (error) {
             next(error);
         }

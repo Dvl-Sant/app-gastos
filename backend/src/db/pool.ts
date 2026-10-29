@@ -1,19 +1,15 @@
-import { Pool, PoolClient } from 'pg';
-import dotenv from 'dotenv';
+import { Pool, PoolClient, types } from 'pg';
+import { config } from '../config';
 
-dotenv.config();
+// Las columnas DATE deben llegar como string 'YYYY-MM-DD' (no como Date de JS),
+// para que las utilidades de calendario trabajen sin zonas horarias.
+types.setTypeParser(types.builtins.DATE, (value) => value);
 
-const pool: Pool = new Pool({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    database: process.env.DB_NAME || 'appgastos',
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-});
+const pool: Pool = new Pool(config.db);
 
-pool.on('error', (err, client) => {
-    console.error('Unexpected error on idle client', err);
-    process.exit(-1);
+// Un error en un cliente idle no debe tumbar el proceso: el pool se recupera solo.
+pool.on('error', (err) => {
+    console.error('[DB] Error inesperado en cliente idle:', err);
 });
 
 export async function getClient(): Promise<PoolClient> {

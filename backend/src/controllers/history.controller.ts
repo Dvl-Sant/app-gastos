@@ -5,7 +5,7 @@ import { HistoryService } from '../services/history.service';
 export class HistoryController {
     static async getHistory(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const history = await HistoryService.getRecentHistory(req.user!.id);
+            const history = await HistoryService.getRecentPayments(req.user!.id);
             res.json(history);
         } catch (error) { next(error); }
     }

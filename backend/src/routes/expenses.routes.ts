@@ -6,9 +6,9 @@ import { EXPENSE_FIELDS } from '../models/Expense';
 const router = Router();
 
 router.get('/', ExpensesController.getAll);
-router.get('/:id', ExpensesController.getById);
-router.post('/', validateBody(EXPENSE_FIELDS), ExpensesController.create);
-router.put('/:id', validateBody(EXPENSE_FIELDS), ExpensesController.update);
+router.get('/calendar', ExpensesController.getCalendar);
+router.post('/', validateBody(EXPENSE_FIELDS, ['name', 'account_id']), ExpensesController.create);
+router.put('/:id', validateBody(['name', 'category']), ExpensesController.update);
 router.delete('/:id', ExpensesController.remove);
 
 export default router;

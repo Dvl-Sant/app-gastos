@@ -14,8 +14,9 @@ export class SavingsController {
 
     static async update(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const { total_amount, currency } = req.body;
-            const saving = await SavingsService.update(req.user!.id, total_amount, currency);
+            const totalAmount = Number(req.body.total_amount);
+            const currency = (req.body.currency as string | undefined) || 'USD';
+            const saving = await SavingsService.update(req.user!.id, totalAmount, currency);
             res.json(saving);
         } catch (error) {
             next(error);

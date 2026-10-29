@@ -1,51 +1,42 @@
 import { Response, NextFunction } from 'express';
-import { IncomesService } from '../services/incomes.service';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { IncomesService } from '../services/incomes.service';
 
 export class IncomesController {
     static async getAll(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const userId = req.user!.id;
-            const incomes = await IncomesService.getAll(userId);
-            res.json(incomes);
-        } catch (error) { next(error); }
+            res.json(await IncomesService.getAll(req.user!.id));
+        } catch (error) {
+            next(error);
+        }
     }
 
     static async create(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const userId = req.user!.id;
-            const income = await IncomesService.create(userId, req.body);
+            const income = await IncomesService.create(req.user!.id, req.body);
             res.status(201).json(income);
-        } catch (error) { next(error); }
-    }
-
-    static async remove(req: AuthRequest, res: Response, next: NextFunction) {
-        try {
-            const userId = req.user!.id;
-            const id = parseInt(req.params.id);
-            const success = await IncomesService.remove(id, userId);
-            if (!success) { return res.status(404).json({ error: 'Ingreso no encontrado' }); }
-            res.status(204).send();
-        } catch (error) { next(error); }
-    }
-
-    static async getById(req: AuthRequest, res: Response, next: NextFunction) {
-        try {
-            const userId = req.user!.id;
-            const id = parseInt(req.params.id);
-            const income = await IncomesService.getById(id, userId);
-            if (!income) { return res.status(404).json({ error: 'Ingreso no encontrado' }); }
-            res.json(income);
-        } catch (error) { next(error); }
+        } catch (error) {
+            next(error);
+        }
     }
 
     static async update(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const userId = req.user!.id;
-            const id = parseInt(req.params.id);
-            const income = await IncomesService.update(id, userId, req.body);
-            if (!income) { return res.status(404).json({ error: 'Ingreso no encontrado' }); }
+            const income = await IncomesService.update(Number(req.params.id), req.user!.id, req.body);
+            if (!income) return res.status(404).json({ status: 'error', message: 'Ingreso no encontrado' });
             res.json(income);
-        } catch (error) { next(error); }
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async remove(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const deleted = await IncomesService.remove(Number(req.params.id), req.user!.id);
+            if (!deleted) return res.status(404).json({ status: 'error', message: 'Ingreso no encontrado' });
+            res.status(204).send();
+        } catch (error) {
+            next(error);
+        }
     }
 }
