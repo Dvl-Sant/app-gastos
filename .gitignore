@@ -28,3 +28,6 @@ Thumbs.db
 # Carpetas del IDE locales
 .vscode/
 .idea/
+
+# Artefactos de pruebas de navegador
+.playwright-mcp/

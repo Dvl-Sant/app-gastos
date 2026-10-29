@@ -1,17 +1,16 @@
-version: '3.8'
-
 services:
   api:
     build:
       context: ./backend
       target: dev
     ports:
-      - "3000:3000"
+      - "3002:3002"
     volumes:
       - ./backend:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=1
     env_file:
       - .env
     depends_on:
@@ -22,15 +21,15 @@ services:
     build:
       context: ./frontend
     ports:
-      - "8080:80"
-    volumes:
-      - ./frontend/public:/usr/share/nginx/html
+      - "8082:80"
+    depends_on:
+      - api
     restart: unless-stopped
 
   db:
     image: postgres:16-alpine
     ports:
-      - "5432:5432"
+      - "5435:5432"
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
