@@ -4,20 +4,21 @@ Este documento ilustra la arquitectura técnica y los flujos de datos operativos
 
 ## 1. Diagrama de Arquitectura de Alto Nivel
 
-El sistema sigue una arquitectura estricta Cliente-Servidor. El cliente envía peticiones REST JSON al Backend (Express.js), el cual procesa esa petición a través de enrutadores, controladores y luego la pasa a la capa de servicios para interactuar con la Base de Datos.
+El sistema sigue una arquitectura estricta Cliente-Servidor. El cliente (SPA React) envía peticiones REST JSON al Backend (Express.js, rutas bajo `/api`), el cual procesa esa petición a través de enrutadores, controladores y luego la pasa a la capa de servicios para interactuar con la Base de Datos.
 
 ```mermaid
 graph TD
     %% Nodos Frontend
-    subgraph Frontend["Frontend Client (UI)"]
-        UI[Interfaces Web HTML/React]
-        Hooks[Client Services/Hooks]
+    subgraph Frontend["Frontend SPA (React + Vite + antd)"]
+        UI[Páginas: Login / Dashboard / Historial]
+        Hooks[Hooks + api client tipado]
+        Nginx[Nginx - proxy /api]
     end
 
     %% Nodos Backend
     subgraph Backend["Backend (Node.js + Express + TS)"]
-        Routes[Routes Express]
-        Middleware[Auth Middleware JWT]
+        Routes[Routes Express /api]
+        Middleware[Auth Middleware JWT + Rate Limit]
         Ctrl[Controllers - HTTP Req/Res]
         Serv[Services - Lógica de Negocio]
         DB_Config[DB Connector - pg]
@@ -29,8 +30,9 @@ graph TD
     end
 
     %% Relaciones
-    UI -->|Evento UI / Fetch| Hooks
-    Hooks -->|Petición HTTP REST| Routes
+    UI -->|Evento UI| Hooks
+    Hooks -->|fetch /api/*| Nginx
+    Nginx -->|proxy| Routes
     Routes -->|Verificación Token| Middleware
     Middleware -->|Aprobado| Ctrl
     Ctrl -->|Delegación de Lógica| Serv
@@ -54,31 +56,26 @@ sequenceDiagram
     participant S as AuthService
     participant DB as PostgreSQL
 
-    C->>R: POST /login { email, password }
-    R->>M: (Validaciones generales)
-    M->>S: delegate login(email, password)
-    S->>DB: Query: buscar usuario por email
+    C->>R: POST /api/auth/login { username, password }
+    R->>M: (Rate limit + validaciones generales)
+    M->>S: delegate login(username, password)
+    S->>DB: Query: buscar usuario por username
     DB-->>S: UserRecord (hash password)
     
-    alt Usuario No Existe
-        S-->>R: Not Found Error (404)
-        R-->>C: Response: { error: 'Invalid credentials' }
-    else Usuario Existe
+    alt Usuario No Existe o Contraseña Incorrecta
+        S-->>R: Unauthorized (401)
+        R-->>C: Response: { status: 'error', message: 'Credenciales inválidas' }
+    else Credenciales Correctas
         S->>S: bcrypt.compare(pass, hash)
-        alt Contraseña Incorrecta
-            S-->>R: Unauthorized (401)
-            R-->>C: Response: { error: 'Invalid credentials' }
-        else Contraseña Correcta
-            S->>S: generate JWT(user.id)
-            S-->>R: { user, token }
-            R-->>C: Response: { status: 'success', data: { token } }
-        end
+        S->>S: generate JWT(user.id)
+        S-->>R: { user, token }
+        R-->>C: Response: { status: 'success', data: { token, user } }
     end
 ```
 
 ## 3. Modelo Estructural Deseado (Boilerplate Rules)
 
-Acorde a las Skills del agente (`estructura-proyectos` y `backend-prisma`), la organización del sistema respeta los principios `SOLID` reduciendo el acomplamiento:
+Acorde a las Skills del agente (`estructura-proyectos` y `frontend-react`), la organización del sistema respeta los principios `SOLID` reduciendo el acomplamiento:
 
 *   **Controllers Livianos**: El controlador se encarga de manejar el ciclo HTTP `(req, res)` en **menos de 15 líneas** de código.
 *   **Servicios Pesados**: El archivo `.service.ts` maneja las promesas directamente, ejecuta agrupaciones y lógica fuerte antes de devolver la data estructurada al controller.
