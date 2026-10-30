@@ -1,6 +1,6 @@
 import { Alert, Button, Table } from 'antd';
 import type { TableProps } from 'antd';
-import { Wallet } from 'lucide-react';
+import { Pencil, Trash2, Wallet } from 'lucide-react';
 import type { Due } from '../types';
 import { formatCurrency } from '../utils/format';
 
@@ -9,6 +9,9 @@ interface Props {
     loading?: boolean;
     showAccount?: boolean;
     onPay?: (due: Due) => void;
+    /** Editar/eliminar el gasto padre de la mensualidad */
+    onEditExpense?: (due: Due) => void;
+    onDeleteExpense?: (due: Due) => void;
     emptyText?: string;
     footer?: React.ReactNode;
 }
@@ -19,7 +22,7 @@ const typeLabels: Record<string, string> = {
     msi: 'A meses',
 };
 
-export default function DuesTable({ dues, loading, showAccount, onPay, emptyText, footer }: Props) {
+export default function DuesTable({ dues, loading, showAccount, onPay, onEditExpense, onDeleteExpense, emptyText, footer }: Props) {
     const columns: TableProps<Due>['columns'] = [
         {
             title: 'Fecha',
@@ -79,21 +82,45 @@ export default function DuesTable({ dues, loading, showAccount, onPay, emptyText
                 </div>
             ),
         },
-        ...(onPay
+        ...(onPay || onEditExpense || onDeleteExpense
             ? [
                   {
                       title: '',
-                      key: 'pay',
+                      key: 'actions',
                       align: 'right' as const,
-                      width: 110,
-                      render: (_: unknown, due: Due) =>
-                          due.is_paid ? (
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-success">Pagado</span>
-                          ) : (
-                              <Button size="small" type="primary" ghost onClick={() => onPay(due)}>
-                                  Pagar
-                              </Button>
-                          ),
+                      width: onEditExpense ? 170 : 110,
+                      render: (_: unknown, due: Due) => (
+                          <div className="flex items-center justify-end gap-1">
+                              {onPay && !due.is_paid && (
+                                  <Button size="small" type="primary" ghost onClick={() => onPay(due)}>
+                                      Pagar
+                                  </Button>
+                              )}
+                              {onPay && due.is_paid && (
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-success mr-1">
+                                      Pagado
+                                  </span>
+                              )}
+                              {onEditExpense && (
+                                  <button
+                                      onClick={() => onEditExpense(due)}
+                                      className="text-primary mx-1 hover:opacity-70"
+                                      title="Editar gasto"
+                                  >
+                                      <Pencil className="w-4 h-4" />
+                                  </button>
+                              )}
+                              {onDeleteExpense && (
+                                  <button
+                                      onClick={() => onDeleteExpense(due)}
+                                      className="text-danger mx-1 hover:opacity-70"
+                                      title="Eliminar gasto"
+                                  >
+                                      <Trash2 className="w-4 h-4" />
+                                  </button>
+                              )}
+                          </div>
+                      ),
                   },
               ]
             : []),

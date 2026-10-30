@@ -6,10 +6,11 @@ import { CreditCard, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import DuesTable from '../components/DuesTable';
 import AccountModal from '../components/AccountModal';
+import ExpenseModal from '../components/ExpenseModal';
 import PaymentModal from '../components/PaymentModal';
 import type { PaymentSourceInput } from '../hooks/useFetch';
 import { api, useFetch } from '../hooks/useFetch';
-import type { Account, Due } from '../types';
+import type { Account, Due, Expense } from '../types';
 import { formatCurrency } from '../utils/format';
 
 const typeMeta: Record<string, { label: string; badge: string }> = {
@@ -19,7 +20,7 @@ const typeMeta: Record<string, { label: string; badge: string }> = {
 };
 
 export default function AccountsPage() {
-    const { message } = AntApp.useApp();
+    const { message, modal } = AntApp.useApp();
     const location = useLocation();
     const accounts = useFetch(api.accounts.list);
 
@@ -33,6 +34,8 @@ export default function AccountsPage() {
     const [payingDue, setPayingDue] = useState<Due | null>(null);
     const [payStatementOpen, setPayStatementOpen] = useState(false);
     const savings = useFetch(api.savings.get);
+    const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+    const [expenseModalOpen, setExpenseModalOpen] = useState(false);
 
     // Abrir el drawer si se llegó desde el dashboard (state.openAccountId)
     useEffect(() => {
@@ -98,6 +101,53 @@ export default function AccountsPage() {
             await accounts.reload();
             await statement.reload();
             await savings.reload();
+        } catch (e) {
+            handleError(e);
+        }
+    };
+
+    /** Abre el modal de edición del gasto al que pertenece la mensualidad. */
+    const editExpenseFromDue = async (due: Due) => {
+        try {
+            const expense = await api.expenses.getById(due.expense_id);
+            setEditingExpense(expense);
+            setExpenseModalOpen(true);
+        } catch (e) {
+            handleError(e);
+        }
+    };
+
+    /** Confirmación en modal antes de eliminar el gasto. */
+    const deleteExpenseFromDue = (due: Due) => {
+        modal.confirm({
+            title: `¿Eliminar "${due.expense_name}"?`,
+            content:
+                'Se eliminan también sus mensualidades pendientes. Los pagos ya hechos se conservan en el historial. Esta acción no se puede deshacer.',
+            okText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            okButtonProps: { danger: true },
+            onOk: async () => {
+                try {
+                    await api.expenses.remove(due.expense_id);
+                    message.success('Gasto eliminado');
+                    await accounts.reload();
+                    await statement.reload();
+                } catch (e) {
+                    handleError(e);
+                }
+            },
+        });
+    };
+
+    const submitEditExpense = async (payload: Record<string, unknown>, editingId: number | null) => {
+        if (!editingId) return;
+        try {
+            await api.expenses.update(editingId, payload);
+            message.success('Gasto actualizado');
+            setExpenseModalOpen(false);
+            setEditingExpense(null);
+            await accounts.reload();
+            await statement.reload();
         } catch (e) {
             handleError(e);
         }
@@ -236,6 +286,8 @@ export default function AccountsPage() {
                             dues={statementData.dues}
                             showAccount={false}
                             onPay={(due) => setPayingDue(due)}
+                            onEditExpense={editExpenseFromDue}
+                            onDeleteExpense={deleteExpenseFromDue}
                             emptyText="Nada vence en este periodo."
                         />
                     </div>
@@ -265,6 +317,16 @@ export default function AccountsPage() {
                     setPayStatementOpen(false);
                 }}
                 onSubmit={payingDue ? submitPayDue : submitPayStatement}
+            />
+            <ExpenseModal
+                open={expenseModalOpen}
+                accounts={accounts.data ?? []}
+                editing={editingExpense}
+                onCancel={() => {
+                    setExpenseModalOpen(false);
+                    setEditingExpense(null);
+                }}
+                onSubmit={submitEditExpense}
             />
         </div>
     );
