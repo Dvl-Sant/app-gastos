@@ -138,6 +138,7 @@ export interface PaymentEntry {
 export interface HistoryGroup {
     account_id: number;
     account_name: string;
+    kind: 'pagos' | 'traspasos';
     total: number;
     payments: PaymentEntry[];
 }

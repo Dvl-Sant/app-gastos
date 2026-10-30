@@ -27,16 +27,19 @@ export default function HistoryPage() {
 
                 {(history.data ?? []).map((group, index) => (
                     <motion.div
-                        key={group.account_id}
+                        key={`${group.kind}-${group.account_id}`}
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.06, duration: 0.3, ease: 'easeOut' }}
                         className="bg-white rounded-xl border border-border-subtle overflow-hidden shadow-sm"
                     >
                         <div className="bg-primary/5 px-6 py-4 border-b border-border-subtle flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-primary">{group.account_name}</h3>
+                            <h3 className="text-lg font-bold text-primary">
+                                {group.kind === 'traspasos' ? 'Ahorros — Traspasos recibidos' : group.account_name}
+                            </h3>
                             <span className="text-sm font-semibold text-slate-500">
-                                Total pagado: <span className="text-slate-900">{formatCurrency(group.total)}</span>
+                                {group.kind === 'traspasos' ? 'Total traspasado:' : 'Total pagado:'}{' '}
+                                <span className="text-slate-900">{formatCurrency(group.total)}</span>
                             </span>
                         </div>
                         <div className="overflow-x-auto">
@@ -60,7 +63,9 @@ export default function HistoryPage() {
                                                     year: 'numeric',
                                                 })}
                                             </td>
-                                            <td className="px-4 py-3 text-slate-900 font-semibold">{p.expense_name ?? p.note ?? '—'}</td>
+                                            <td className="px-4 py-3 text-slate-900 font-semibold">
+                                                {p.expense_name ?? p.note ?? (group.kind === 'traspasos' ? 'Traspaso a ahorros' : '—')}
+                                            </td>
                                             <td className="px-4 py-3 text-slate-600 text-xs font-bold whitespace-nowrap">
                                                 {p.installments && p.installment_no ? `${p.installment_no}/${p.installments}` : '—'}
                                             </td>

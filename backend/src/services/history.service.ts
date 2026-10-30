@@ -1,7 +1,7 @@
 import pool from '../db/pool';
 
 export class HistoryService {
-    /** Pagos recientes agrupados por cuenta destino. */
+    /** Pagos recientes agrupados por cuenta destino + traspasos a ahorros. */
     static async getRecentPayments(userId: number) {
         const { rows } = await pool.query(
             `SELECT p.id, p.amount, p.note, p.paid_at, p.due_id,
@@ -24,12 +24,13 @@ export class HistoryService {
             [userId]
         );
 
-        const groups = new Map<number, { account_id: number; account_name: string; total: number; payments: typeof rows }>();
+        const groups = new Map<number, { account_id: number; account_name: string; kind: string; total: number; payments: typeof rows }>();
         for (const row of rows) {
             if (!groups.has(row.account_id)) {
                 groups.set(row.account_id, {
                     account_id: row.account_id,
                     account_name: row.account_name,
+                    kind: 'pagos',
                     total: 0,
                     payments: [],
                 });
@@ -38,9 +39,41 @@ export class HistoryService {
             group.total += parseFloat(row.amount) || 0;
             group.payments.push(row);
         }
-        return [...groups.values()].map((g) => ({
+        const result = [...groups.values()].map((g) => ({
             ...g,
             total: Math.round(g.total * 100) / 100,
         }));
+
+        // Traspasos a ahorros, como grupo propio ordenado por el más reciente
+        const { rows: transfers } = await pool.query(
+            `SELECT sm.id, sm.amount, sm.note, sm.created_at,
+                    a.name AS source_account_name
+             FROM savings_movements sm
+             LEFT JOIN accounts a ON a.id = sm.source_account_id
+             WHERE sm.user_id = $1
+             ORDER BY sm.created_at DESC
+             LIMIT 100`,
+            [userId]
+        );
+
+        if (transfers.length > 0) {
+            result.push({
+                account_id: 0,
+                account_name: 'Ahorros',
+                kind: 'traspasos',
+                total: Math.round(transfers.reduce((acc, t) => acc + (parseFloat(t.amount) || 0), 0) * 100) / 100,
+                payments: transfers.map((t) => ({
+                    ...t,
+                    due_id: null,
+                    account_id: 0,
+                    account_name: 'Ahorros',
+                    expense_name: null,
+                    installments: null,
+                    installment_no: null,
+                })),
+            });
+        }
+
+        return result;
     }
 }
