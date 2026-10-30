@@ -27,6 +27,7 @@ const typeLabels: Record<IncomeType, string> = {
 export default function IncomeModal({ open, editing, onCancel, onSubmit }: Props) {
     const [form] = Form.useForm<IncomeFormValues>();
     const [type, setType] = useState<IncomeType>('frecuente');
+    const [isQuincenal, setIsQuincenal] = useState(false);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -41,9 +42,11 @@ export default function IncomeModal({ open, editing, onCancel, onSubmit }: Props
                 received_at: editing.received_at ? dayjs(editing.received_at) : undefined,
             });
             setType(editing.income_type);
+            setIsQuincenal(editing.frequency === 'quincenal');
         } else {
             form.resetFields();
             setType('frecuente');
+            setIsQuincenal(false);
         }
     }, [open, editing, form]);
 
@@ -57,7 +60,10 @@ export default function IncomeModal({ open, editing, onCancel, onSubmit }: Props
                 income_type: type,
             };
             if (type === 'frecuente') {
-                Object.assign(payload, { frequency: values.frequency, next_pay_day: values.next_pay_day });
+                Object.assign(payload, {
+                    frequency: values.frequency,
+                    next_pay_day: values.frequency === 'quincenal' ? undefined : values.next_pay_day,
+                });
             } else {
                 Object.assign(payload, {
                     received_at: values.received_at ? values.received_at.format('YYYY-MM-DD') : undefined,
@@ -120,19 +126,22 @@ export default function IncomeModal({ open, editing, onCancel, onSubmit }: Props
                             <Select
                                 options={[
                                     { value: 'semanal', label: 'Semanal' },
-                                    { value: 'quincenal', label: 'Quincenal' },
+                                    { value: 'quincenal', label: 'Quincenal (15 y 28)' },
                                     { value: 'mensual', label: 'Mensual' },
                                 ]}
                                 placeholder="Selecciona"
+                                onChange={(v) => setIsQuincenal(v === 'quincenal')}
                             />
                         </Form.Item>
-                        <Form.Item
-                            name="next_pay_day"
-                            label="Día de Pago"
-                            rules={[{ required: true, message: 'Día 1-28' }]}
-                        >
-                            <InputNumber min={1} max={28} className="!w-full" placeholder="1-28" />
-                        </Form.Item>
+                        {!isQuincenal && (
+                            <Form.Item
+                                name="next_pay_day"
+                                label="Día de Pago"
+                                rules={[{ required: !isQuincenal, message: 'Día 1-28' }]}
+                            >
+                                <InputNumber min={1} max={28} className="!w-full" placeholder="1-28" />
+                            </Form.Item>
+                        )}
                     </div>
                 ) : (
                     <Form.Item

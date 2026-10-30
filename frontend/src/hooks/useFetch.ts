@@ -36,6 +36,11 @@ export function useFetch<T>(fetcher: () => Promise<T>, deps: DependencyList = []
 
 // --- Endpoints ---
 
+export interface PaymentSourceInput {
+    source_kind: 'account' | 'savings';
+    source_account_id?: number;
+}
+
 export const api = {
     accounts: {
         list: () => apiFetch<Account[]>('/accounts'),
@@ -44,7 +49,7 @@ export const api = {
             apiFetch<Account>(`/accounts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
         remove: (id: number) => apiFetch<void>(`/accounts/${id}`, { method: 'DELETE' }),
         statement: (id: number) => apiFetch<Statement>(`/accounts/${id}/statement`),
-        pay: (id: number, body: { amount: number | 'full'; source_account_id: number }) =>
+        pay: (id: number, body: { amount: number | 'full' } & PaymentSourceInput) =>
             apiFetch<unknown>(`/accounts/${id}/pay`, { method: 'POST', body: JSON.stringify(body) }),
     },
     expenses: {
@@ -58,7 +63,7 @@ export const api = {
         remove: (id: number) => apiFetch<void>(`/expenses/${id}`, { method: 'DELETE' }),
     },
     dues: {
-        pay: (id: number, body: { amount?: number; source_account_id: number }) =>
+        pay: (id: number, body: { amount?: number } & PaymentSourceInput) =>
             apiFetch<unknown>(`/dues/${id}/pay`, { method: 'POST', body: JSON.stringify(body) }),
     },
     incomes: {
@@ -73,6 +78,11 @@ export const api = {
         get: () => apiFetch<{ total_amount: string; currency: string }>('/savings'),
         update: (body: unknown) =>
             apiFetch<{ total_amount: string; currency: string }>('/savings', { method: 'PUT', body: JSON.stringify(body) }),
+        transfer: (body: { amount: number; source_account_id: number; note?: string }) =>
+            apiFetch<{ savings: { total_amount: string }; source_balance: number }>('/savings/transfer', {
+                method: 'POST',
+                body: JSON.stringify(body),
+            }),
     },
     dashboard: {
         summary: () => apiFetch<import('../types').DashboardSummary>('/dashboard/summary'),

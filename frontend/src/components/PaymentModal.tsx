@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Form, InputNumber, Modal, Select, Switch } from 'antd';
 import type { Account, Due } from '../types';
 import { formatCurrency } from '../utils/format';
+import type { PaymentSourceInput } from '../hooks/useFetch';
 
 interface Props {
     open: boolean;
@@ -9,35 +10,55 @@ interface Props {
     due: Due | null;
     /** Estado de cuenta a pagar (pago de tarjeta: total o parcial) */
     statementPending: number | null;
+    /** Cuenta que recibe el pago: no puede pagar consigo misma */
+    targetAccountId: number | null;
     accounts: Account[];
+    savingsTotal: number | null;
     onCancel: () => void;
-    onSubmit: (amount: number | 'full', sourceAccountId: number) => Promise<void>;
+    onSubmit: (amount: number | 'full', source: PaymentSourceInput) => Promise<void>;
+}
+
+interface SourceOption {
+    value: string; // 'savings' | id numérico como string
+    label: string;
 }
 
 /**
  * Modal de pago flexible: paga una mensualidad concreta o el estado de
- * cuenta (todo o un monto arbitrario), sacando dinero de una cuenta
- * de efectivo/débito.
+ * cuenta (todo o un monto arbitrario). El dinero sale de los ahorros o de
+ * cualquier cuenta/tarjeta distinta a la que recibe el pago.
  */
-export default function PaymentModal({ open, due, statementPending, accounts, onCancel, onSubmit }: Props) {
-    const [form] = Form.useForm<{ pay_full: boolean; amount?: number; source_account_id?: number }>();
+export default function PaymentModal({
+    open,
+    due,
+    statementPending,
+    targetAccountId,
+    accounts,
+    savingsTotal,
+    onCancel,
+    onSubmit,
+}: Props) {
+    const [form] = Form.useForm<{ pay_full: boolean; amount?: number; source: string }>();
     const [payFull, setPayFull] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const defaultAmount = due
-        ? Number(due.amount) - Number(due.paid_amount)
-        : (statementPending ?? 0);
-    const sourceOptions = useMemo(
-        () =>
-            accounts
-                .filter((a) => a.type === 'efectivo' || a.type === 'debito')
-                .map((a) => ({
-                    value: a.id,
-                    label: `${a.name} — saldo ${formatCurrency(a.balance)}`,
-                })),
-        [accounts]
-    );
+    const defaultAmount = due ? Number(due.amount) - Number(due.paid_amount) : (statementPending ?? 0);
+
+    const sourceOptions: SourceOption[] = useMemo(() => {
+        const options: SourceOption[] = [
+            { value: 'savings', label: `Ahorros — ${formatCurrency(savingsTotal ?? 0)}` },
+        ];
+        for (const account of accounts) {
+            if (targetAccountId !== null && account.id === targetAccountId) continue; // no pagarse a sí misma
+            const detail =
+                account.type === 'credito'
+                    ? `crédito, deuda ${formatCurrency(account.pending_debt ?? 0)}`
+                    : `saldo ${formatCurrency(account.balance)}`;
+            options.push({ value: String(account.id), label: `${account.name} — ${detail}` });
+        }
+        return options;
+    }, [accounts, targetAccountId, savingsTotal]);
 
     useEffect(() => {
         if (!open) return;
@@ -46,22 +67,25 @@ export default function PaymentModal({ open, due, statementPending, accounts, on
         form.setFieldsValue({
             pay_full: !due,
             amount: Math.max(0.01, Math.round(defaultAmount * 100) / 100) || undefined,
-            source_account_id: sourceOptions[0]?.value,
+            source: sourceOptions[0]?.value,
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, due, statementPending]);
+    }, [open, due, statementPending, targetAccountId]);
 
     const handleOk = async () => {
         const values = await form.validateFields();
-        const source = values.source_account_id;
-        if (!source) {
-            setError('Necesitas una cuenta de efectivo o débito de donde sacar el dinero');
+        if (!values.source) {
+            setError('Selecciona de dónde sacar el dinero');
             return;
         }
         setSaving(true);
         setError(null);
         try {
             const amount: number | 'full' = payFull ? 'full' : Number(values.amount);
+            const source: PaymentSourceInput =
+                values.source === 'savings'
+                    ? { source_kind: 'savings' }
+                    : { source_kind: 'account', source_account_id: Number(values.source) };
             await onSubmit(amount, source);
         } finally {
             setSaving(false);
@@ -103,11 +127,11 @@ export default function PaymentModal({ open, due, statementPending, accounts, on
                     </Form.Item>
                 )}
                 <Form.Item
-                    name="source_account_id"
+                    name="source"
                     label="Sacar dinero de"
-                    rules={[{ required: true, message: 'Selecciona la cuenta de origen' }]}
+                    rules={[{ required: true, message: 'Selecciona el origen' }]}
                 >
-                    <Select options={sourceOptions} placeholder="Efectivo / Débito" />
+                    <Select options={sourceOptions} placeholder="Ahorros, efectivo o tarjeta" />
                 </Form.Item>
                 {error && <Alert type="error" showIcon message={error} />}
             </Form>

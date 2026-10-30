@@ -45,6 +45,7 @@ export default function HistoryPage() {
                                     <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
                                         <th className="px-4 py-3 font-bold uppercase text-[10px] tracking-widest">Fecha</th>
                                         <th className="px-4 py-3 font-bold uppercase text-[10px] tracking-widest">Concepto</th>
+                                        <th className="px-4 py-3 font-bold uppercase text-[10px] tracking-widest">Pago</th>
                                         <th className="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Origen</th>
                                         <th className="px-4 py-3 font-bold uppercase text-[10px] tracking-widest text-right">Monto</th>
                                     </tr>
@@ -60,7 +61,10 @@ export default function HistoryPage() {
                                                 })}
                                             </td>
                                             <td className="px-4 py-3 text-slate-900 font-semibold">{p.expense_name ?? p.note ?? '—'}</td>
-                                            <td className="px-4 py-3 text-right text-slate-500 text-xs">{p.source_account_name ?? '—'}</td>
+                                            <td className="px-4 py-3 text-slate-600 text-xs font-bold whitespace-nowrap">
+                                                {p.installments && p.installment_no ? `${p.installment_no}/${p.installments}` : '—'}
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-slate-500 text-xs">{p.source_account_name ?? 'Ahorros'}</td>
                                             <td className="px-4 py-3 text-right text-slate-900 font-bold">{formatCurrency(p.amount)}</td>
                                         </tr>
                                     ))}

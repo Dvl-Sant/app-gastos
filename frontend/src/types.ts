@@ -73,6 +73,7 @@ export interface Income {
     frequency: 'semanal' | 'quincenal' | 'mensual' | null;
     next_pay_day: number | null;
     received_at: string | null;
+    created_at: string;
 }
 
 export interface Statement {
@@ -130,6 +131,8 @@ export interface PaymentEntry {
     account_name: string;
     source_account_name: string | null;
     expense_name: string | null;
+    installments: number | null;
+    installment_no: number | null;
 }
 
 export interface HistoryGroup {

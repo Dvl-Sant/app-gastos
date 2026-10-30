@@ -54,6 +54,8 @@ export default function IncomesTable({ incomes, onEdit, onDelete }: Props) {
                               })
                             : '—'}
                     </span>
+                ) : income.frequency === 'quincenal' ? (
+                    <span className="text-slate-500 text-xs">Quincenal • días 15 y 28</span>
                 ) : (
                     <span className="text-slate-500 text-xs">
                         {frequencyLabels[income.frequency ?? ''] ?? income.frequency} • día {income.next_pay_day}

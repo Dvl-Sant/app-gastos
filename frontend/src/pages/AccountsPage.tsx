@@ -7,6 +7,7 @@ import AppHeader from '../components/AppHeader';
 import DuesTable from '../components/DuesTable';
 import AccountModal from '../components/AccountModal';
 import PaymentModal from '../components/PaymentModal';
+import type { PaymentSourceInput } from '../hooks/useFetch';
 import { api, useFetch } from '../hooks/useFetch';
 import type { Account, Due } from '../types';
 import { formatCurrency } from '../utils/format';
@@ -31,6 +32,7 @@ export default function AccountsPage() {
     );
     const [payingDue, setPayingDue] = useState<Due | null>(null);
     const [payStatementOpen, setPayStatementOpen] = useState(false);
+    const savings = useFetch(api.savings.get);
 
     // Abrir el drawer si se llegó desde el dashboard (state.openAccountId)
     useEffect(() => {
@@ -70,30 +72,32 @@ export default function AccountsPage() {
         }
     };
 
-    const submitPayStatement = async (amount: number | 'full', sourceAccountId: number) => {
+    const submitPayStatement = async (amount: number | 'full', source: PaymentSourceInput) => {
         if (!statementAccountId) return;
         try {
-            await api.accounts.pay(statementAccountId, { amount, source_account_id: sourceAccountId });
+            await api.accounts.pay(statementAccountId, { amount, ...source });
             message.success('Pago registrado');
             setPayStatementOpen(false);
             await accounts.reload();
             await statement.reload();
+            await savings.reload();
         } catch (e) {
             handleError(e);
         }
     };
 
-    const submitPayDue = async (amount: number | 'full', sourceAccountId: number) => {
+    const submitPayDue = async (amount: number | 'full', source: PaymentSourceInput) => {
         if (!payingDue) return;
         try {
             await api.dues.pay(payingDue.id, {
                 amount: amount === 'full' ? undefined : amount,
-                source_account_id: sourceAccountId,
+                ...source,
             });
             message.success('Pago registrado');
             setPayingDue(null);
             await accounts.reload();
             await statement.reload();
+            await savings.reload();
         } catch (e) {
             handleError(e);
         }
@@ -253,7 +257,9 @@ export default function AccountsPage() {
                 open={payingDue !== null || payStatementOpen}
                 due={payingDue}
                 statementPending={payStatementOpen ? (statementData?.totals.pending ?? null) : null}
+                targetAccountId={payingDue ? payingDue.account_id : statementAccountId}
                 accounts={accounts.data ?? []}
+                savingsTotal={savings.data ? Number(savings.data.total_amount) : null}
                 onCancel={() => {
                     setPayingDue(null);
                     setPayStatementOpen(false);

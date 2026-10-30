@@ -6,6 +6,7 @@ import { ArrowDownRight, ArrowUpRight, CalendarRange } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import DuesTable from '../components/DuesTable';
 import PaymentModal from '../components/PaymentModal';
+import type { PaymentSourceInput } from '../hooks/useFetch';
 import { api, useFetch } from '../hooks/useFetch';
 import type { Due } from '../types';
 import { formatCurrency } from '../utils/format';
@@ -27,21 +28,23 @@ export default function CashflowPage() {
     );
 
     const accounts = useFetch(api.accounts.list);
+    const savings = useFetch(api.savings.get);
     const [payingDue, setPayingDue] = useState<Due | null>(null);
 
     const handleError = (e: unknown) => message.error(e instanceof Error ? e.message : 'Error inesperado');
 
-    const payDue = async (amount: number | 'full', sourceAccountId: number) => {
+    const payDue = async (amount: number | 'full', source: PaymentSourceInput) => {
         if (!payingDue) return;
         try {
             await api.dues.pay(payingDue.id, {
                 amount: amount === 'full' ? undefined : amount,
-                source_account_id: sourceAccountId,
+                ...source,
             });
             message.success('Pago registrado');
             setPayingDue(null);
             await cashflow.reload();
             await accounts.reload();
+            await savings.reload();
         } catch (e) {
             handleError(e);
         }
@@ -165,7 +168,9 @@ export default function CashflowPage() {
                 open={payingDue !== null}
                 due={payingDue}
                 statementPending={null}
+                targetAccountId={payingDue?.account_id ?? null}
                 accounts={accounts.data ?? []}
+                savingsTotal={savings.data ? Number(savings.data.total_amount) : null}
                 onCancel={() => setPayingDue(null)}
                 onSubmit={payDue}
             />

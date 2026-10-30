@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert, App as AntApp, Button, Skeleton, Statistic } from 'antd';
+import { Alert, App as AntApp, Button, DatePicker, Skeleton, Statistic } from 'antd';
+import dayjs, { type Dayjs } from 'dayjs';
 import { motion } from 'framer-motion';
-import { CalendarClock, CreditCard, DollarSign, Lightbulb, Pencil, Plus, TrendingUp, User } from 'lucide-react';
+import { CalendarClock, CreditCard, DollarSign, Pencil, Plus, TrendingUp, User } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import DuesTable from '../components/DuesTable';
 import IncomesTable from '../components/IncomesTable';
 import ExpenseModal from '../components/ExpenseModal';
 import IncomeModal from '../components/IncomeModal';
-import SavingsModal, { type SavingsFormValues } from '../components/SavingsModal';
+import SavingsModal, { type SavingsFormValues, type TransferFormValues } from '../components/SavingsModal';
 import PaymentModal from '../components/PaymentModal';
+import type { PaymentSourceInput } from '../hooks/useFetch';
 import { api, useFetch } from '../hooks/useFetch';
 import type { Due, Income } from '../types';
 import { formatCurrency } from '../utils/format';
@@ -33,12 +35,23 @@ export default function DashboardPage() {
     const [editingIncome, setEditingIncome] = useState<Income | null>(null);
     const [savingsModalOpen, setSavingsModalOpen] = useState(false);
     const [payingDue, setPayingDue] = useState<Due | null>(null);
+    const [viewMonth, setViewMonth] = useState<Dayjs>(dayjs());
+
+    const monthDues = useFetch(
+        () =>
+            api.expenses.calendar(
+                viewMonth.startOf('month').format('YYYY-MM-DD'),
+                viewMonth.endOf('month').format('YYYY-MM-DD')
+            ),
+        [viewMonth.format('YYYY-MM')]
+    );
 
     const refreshAll = () => {
         void dashboard.reload();
         void accounts.reload();
         void incomes.reload();
         void savings.reload();
+        void monthDues.reload();
     };
 
     const handleError = (e: unknown) => message.error(e instanceof Error ? e.message : 'Error inesperado');
@@ -82,10 +95,24 @@ export default function DashboardPage() {
         }
     };
 
-    const payDue = async (amount: number | 'full', sourceAccountId: number) => {
+    const submitTransfer = async (values: TransferFormValues) => {
+        try {
+            await api.savings.transfer(values);
+            message.success('Traspaso a ahorros registrado');
+            setSavingsModalOpen(false);
+            refreshAll();
+        } catch (e) {
+            handleError(e);
+        }
+    };
+
+    const payDue = async (amount: number | 'full', source: PaymentSourceInput) => {
         if (!payingDue) return;
         try {
-            await api.dues.pay(payingDue.id, { amount: amount === 'full' ? undefined : amount, source_account_id: sourceAccountId });
+            await api.dues.pay(payingDue.id, {
+                amount: amount === 'full' ? undefined : amount,
+                ...source,
+            });
             message.success('Pago registrado');
             setPayingDue(null);
             refreshAll();
@@ -227,23 +254,32 @@ export default function DashboardPage() {
                     </div>
                 </motion.section>
 
-                {/* Próximos vencimientos */}
+                {/* Vencimientos del mes */}
                 <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16, duration: 0.35, ease: 'easeOut' }}>
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                         <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <CalendarClock className="w-5 h-5 text-primary" /> Próximos Vencimientos
+                            <CalendarClock className="w-5 h-5 text-primary" /> Vencimientos del mes
                         </h3>
-                        <Button icon={<Lightbulb className="w-4 h-4" />} onClick={() => navigate('/flujo')} className="!text-primary !bg-primary/5 !rounded-full !font-bold !text-sm !px-3">
-                            Ver flujo completo
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <DatePicker
+                                picker="month"
+                                value={viewMonth}
+                                onChange={(d) => d && setViewMonth(d)}
+                                format="MMMM YYYY"
+                                allowClear={false}
+                            />
+                            <Button icon={<TrendingUp className="w-4 h-4" />} onClick={() => navigate('/flujo')} className="!text-primary !bg-primary/5 !rounded-full !font-bold !text-sm !px-3">
+                                Flujo completo
+                            </Button>
+                        </div>
                     </div>
                     <div className="bg-white rounded-xl border border-border-subtle overflow-hidden shadow-sm">
                         <DuesTable
-                            dues={summary?.upcoming ?? []}
-                            loading={dashboard.loading}
+                            dues={monthDues.data ?? []}
+                            loading={monthDues.loading}
                             showAccount
                             onPay={(due) => setPayingDue(due)}
-                            emptyText="No hay vencimientos pendientes. ¡Al día!"
+                            emptyText={`Nada vence en ${viewMonth.format('MMMM YYYY')}.`}
                         />
                     </div>
                 </motion.section>
@@ -301,14 +337,18 @@ export default function DashboardPage() {
             <SavingsModal
                 open={savingsModalOpen}
                 current={savings.data}
+                accounts={accounts.data ?? []}
                 onCancel={() => setSavingsModalOpen(false)}
-                onSubmit={submitSavings}
+                onSetTotal={submitSavings}
+                onTransfer={submitTransfer}
             />
             <PaymentModal
                 open={payingDue !== null}
                 due={payingDue}
                 statementPending={null}
+                targetAccountId={payingDue?.account_id ?? null}
                 accounts={accounts.data ?? []}
+                savingsTotal={savings.data ? Number(savings.data.total_amount) : null}
                 onCancel={() => setPayingDue(null)}
                 onSubmit={payDue}
             />
