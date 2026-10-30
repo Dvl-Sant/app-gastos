@@ -2,7 +2,6 @@ import pool from '../db/pool';
 import { toNum, todayISO } from '../utils/dates';
 import { ExpensesService } from './expenses.service';
 import { IncomesService } from './incomes.service';
-
 export interface CashflowMonth {
     month: string; // YYYY-MM
     incomes: number;
@@ -18,6 +17,7 @@ export class CashflowService {
      */
     static async getCashflow(userId: number, from: string, to: string) {
         await ExpensesService.ensureRecurringDues(userId, to);
+        await IncomesService.settleIncomes(userId);
 
         const dues = await ExpensesService.getCalendar(userId, from, to);
         const { rows: incomeRows } = await pool.query('SELECT * FROM incomes WHERE user_id = $1', [userId]);

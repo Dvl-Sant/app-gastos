@@ -22,6 +22,7 @@ export class DashboardService {
     static async getSummary(userId: number) {
         const reference = todayISO();
         await ExpensesService.ensureRecurringDues(userId, addMonths(reference, 12));
+        await IncomesService.settleIncomes(userId);
 
         const { rows: savingsRows } = await pool.query(
             'SELECT total_amount FROM user_savings WHERE user_id = $1 LIMIT 1',

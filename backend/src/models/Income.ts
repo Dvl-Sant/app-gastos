@@ -11,7 +11,6 @@ export interface Income {
     received_at: string | null;
     created_at: Date;
 }
-
 export interface CreateIncomeDTO {
     name: string;
     amount: number;
