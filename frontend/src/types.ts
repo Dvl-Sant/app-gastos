@@ -46,6 +46,8 @@ export interface Expense {
     is_paid: boolean;
     account_name?: string;
     next_due_date?: string | null;
+    next_due_id?: number | null;
+    next_due_amount?: string | null;
     pending_amount?: string;
 }
 

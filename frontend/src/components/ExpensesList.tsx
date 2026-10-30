@@ -1,12 +1,13 @@
 import { Popconfirm, Table } from 'antd';
 import type { TableProps } from 'antd';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Banknote, Pencil, Trash2 } from 'lucide-react';
 import type { Expense } from '../types';
 import { formatCurrency } from '../utils/format';
 
 interface Props {
     expenses: Expense[];
     loading?: boolean;
+    onPay?: (expense: Expense) => void;
     onEdit: (expense: Expense) => void;
     onDelete: (expense: Expense) => void;
 }
@@ -17,8 +18,8 @@ const typeLabels: Record<string, string> = {
     msi: 'A meses',
 };
 
-/** Lista de gastos declarados con edición y eliminación. */
-export default function ExpensesList({ expenses, loading, onEdit, onDelete }: Props) {
+/** Lista de gastos declarados con pago anticipado, edición y eliminación. */
+export default function ExpensesList({ expenses, loading, onPay, onEdit, onDelete }: Props) {
     const columns: TableProps<Expense>['columns'] = [
         {
             title: 'Concepto',
@@ -89,9 +90,18 @@ export default function ExpensesList({ expenses, loading, onEdit, onDelete }: Pr
             title: 'Acciones',
             key: 'actions',
             align: 'right',
-            width: 110,
+            width: 140,
             render: (_, expense) => (
                 <div className="flex items-center justify-end gap-1">
+                    {onPay && expense.next_due_id && (
+                        <button
+                            onClick={() => onPay(expense)}
+                            className="text-success mx-1 hover:opacity-70"
+                            title={`Registrar pago (${formatCurrency(expense.next_due_amount ?? 0)})`}
+                        >
+                            <Banknote className="w-4 h-4" />
+                        </button>
+                    )}
                     <button onClick={() => onEdit(expense)} className="text-primary mx-1 hover:opacity-70" title="Editar">
                         <Pencil className="w-4 h-4" />
                     </button>

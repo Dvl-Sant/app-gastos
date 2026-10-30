@@ -88,6 +88,21 @@ export default function DashboardPage() {
         }
     };
 
+    /** Pago anticipado: abre el modal apuntando a la siguiente mensualidad pendiente. */
+    const payExpense = (expense: Expense) => {
+        if (!expense.next_due_id) return;
+        setPayingDue({
+            id: expense.next_due_id,
+            expense_id: expense.id,
+            account_id: expense.account_id,
+            due_date: expense.next_due_date ?? '',
+            amount: expense.next_due_amount ?? '0',
+            paid_amount: '0',
+            is_paid: false,
+            expense_name: expense.name,
+        });
+    };
+
     const submitIncome = async (payload: Record<string, unknown>, editingId: number | null) => {
         try {
             if (editingId) {
@@ -324,6 +339,7 @@ export default function DashboardPage() {
                         <ExpensesList
                             expenses={expensesList.data ?? []}
                             loading={expensesList.loading}
+                            onPay={payExpense}
                             onEdit={(expense) => {
                                 setEditingExpense(expense);
                                 setExpenseModalOpen(true);

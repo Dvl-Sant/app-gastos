@@ -12,6 +12,10 @@ const EXPENSE_SELECT = `
     SELECT e.*, a.name AS account_name, a.type AS account_type,
            (SELECT d.due_date FROM dues d WHERE d.expense_id = e.id AND d.is_paid = false
             ORDER BY d.due_date ASC LIMIT 1) AS next_due_date,
+           (SELECT d.id FROM dues d WHERE d.expense_id = e.id AND d.is_paid = false
+            ORDER BY d.due_date ASC LIMIT 1) AS next_due_id,
+           (SELECT d.amount FROM dues d WHERE d.expense_id = e.id AND d.is_paid = false
+            ORDER BY d.due_date ASC LIMIT 1) AS next_due_amount,
            COALESCE((SELECT SUM(d.amount - d.paid_amount) FROM dues d
                      WHERE d.expense_id = e.id AND d.is_paid = false), 0) AS pending_amount
     FROM expenses e
