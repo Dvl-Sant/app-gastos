@@ -3,6 +3,7 @@ import { HttpError } from '../utils/errors';
 import { cycleWindow, monthWindow, nextCutDate, todayISO, toNum } from '../utils/dates';
 import { Account, CreateAccountDTO, UpdateAccountDTO } from '../models/Account';
 import { Due } from '../models/Expense';
+import type { PaymentSource } from '../models/Payment';
 
 const ACCOUNT_SELECT = `
     SELECT a.*,
@@ -125,13 +126,13 @@ export class AccountsService {
      * Pago flexible del estado de cuenta: monto 'full' (todo el pendiente del
      * ciclo), un monto arbitrario (se aplica FIFO a las mensualidades más
      * antiguas), o mensualidad por mensualidad vía payDue.
-     * El dinero sale de source_account_id (efectivo/débito).
+     * El dinero sale de otra cuenta/tarjeta (nunca la misma) o de los ahorros.
      */
     static async payStatement(
         userId: number,
         accountId: number,
         amount: number | 'full',
-        sourceAccountId: number
+        source: PaymentSource
     ) {
         const client = await getClient();
         try {
@@ -144,12 +145,21 @@ export class AccountsService {
             const account: Account | undefined = accountRows[0];
             if (!account) throw new HttpError(404, 'Cuenta no encontrada');
 
-            const { rows: sourceRows } = await client.query(
-                "SELECT * FROM accounts WHERE id = $1 AND user_id = $2 AND type IN ('efectivo','debito') FOR UPDATE",
-                [sourceAccountId, userId]
-            );
-            const source = sourceRows[0];
-            if (!source) throw new HttpError(400, 'La cuenta de origen debe ser de efectivo o débito');
+            // Valida la fuente de dinero sin descontar todavía:
+            // la deducción se hace al final, por el monto realmente pagado.
+            let sourceAccountId: number | null = null;
+            if (source.kind === 'account') {
+                if (!source.account_id) throw new HttpError(400, 'Falta la cuenta de origen');
+                if (source.account_id === accountId) {
+                    throw new HttpError(400, 'No puedes pagar una tarjeta con ella misma');
+                }
+                const { rows: sourceRows } = await client.query(
+                    'SELECT id FROM accounts WHERE id = $1 AND user_id = $2 FOR UPDATE',
+                    [source.account_id, userId]
+                );
+                if (!sourceRows[0]) throw new HttpError(404, 'Cuenta de origen no encontrada');
+                sourceAccountId = source.account_id;
+            }
 
             const { cutDate, from, to } = this.cycleFilter(account);
 
@@ -183,8 +193,18 @@ export class AccountsService {
                 remaining -= appliedAmount;
             }
 
-            const newSourceBalance = toNum(source.balance) - toPay;
-            await client.query('UPDATE accounts SET balance = $1 WHERE id = $2', [newSourceBalance, source.id]);
+            // Deduce del origen: ahorros o cuenta/tarjeta (nunca la misma tarjeta)
+            if (source.kind === 'savings') {
+                await client.query(
+                    `INSERT INTO user_savings (user_id, total_amount, currency)
+                     VALUES ($1, 0 - $2::numeric, 'USD')
+                     ON CONFLICT (user_id) DO UPDATE
+                     SET total_amount = user_savings.total_amount - $2::numeric, updated_at = NOW()`,
+                    [userId, toPay]
+                );
+            } else if (sourceAccountId !== null) {
+                await client.query('UPDATE accounts SET balance = balance - $1::numeric WHERE id = $2', [toPay, sourceAccountId]);
+            }
 
             const { rows: paymentRows } = await client.query(
                 `INSERT INTO payments (user_id, account_id, source_account_id, amount, note)

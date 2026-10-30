@@ -3,6 +3,7 @@ import type { PoolClient } from 'pg';
 import { HttpError } from '../utils/errors';
 import { addMonths, nextCutDate, paymentDateForCut, toNum, todayISO } from '../utils/dates';
 import { CreateExpenseDTO, Due, Expense, UpdateExpenseDTO } from '../models/Expense';
+import type { PaymentSource } from '../models/Payment';
 
 /** Meses de mensualidades recurrentes generados por adelantado. */
 const RECURRENT_HORIZON_MONTHS = 12;
@@ -223,9 +224,9 @@ export class ExpensesService {
 
     /**
      * Pago de una mensualidad individual, con monto completo o parcial.
-     * El dinero sale de source_account_id (efectivo/débito).
+     * El dinero sale de una cuenta/tarjeta distinta a la del gasto, o de los ahorros.
      */
-    static async payDue(userId: number, dueId: number, amount: number | undefined, sourceAccountId: number) {
+    static async payDue(userId: number, dueId: number, amount: number | undefined, source: PaymentSource) {
         const client = await getClient();
         try {
             await client.query('BEGIN');
@@ -244,12 +245,16 @@ export class ExpensesService {
             const toPay = Math.round(Math.min(amount ?? pending, pending) * 100) / 100;
             if (toPay <= 0) throw new HttpError(400, 'El monto a pagar debe ser mayor a 0');
 
-            const { rows: sourceRows } = await client.query(
-                "SELECT * FROM accounts WHERE id = $1 AND user_id = $2 AND type IN ('efectivo','debito') FOR UPDATE",
-                [sourceAccountId, userId]
-            );
-            const source = sourceRows[0];
-            if (!source) throw new HttpError(400, 'La cuenta de origen debe ser de efectivo o débito');
+            let sourceAccountId: number | null = null;
+            if (source.kind === 'savings') {
+                await this.deductFromSavings(client, userId, toPay);
+            } else {
+                if (!source.account_id) throw new HttpError(400, 'Falta la cuenta de origen');
+                if (source.account_id === due.account_id) {
+                    throw new HttpError(400, 'No puedes pagar una tarjeta con ella misma');
+                }
+                sourceAccountId = await this.deductFromAccount(client, userId, source.account_id, toPay);
+            }
 
             const newPaid = toNum(due.paid_amount) + toPay;
             await client.query('UPDATE dues SET paid_amount = $1, is_paid = $2 WHERE id = $3', [
@@ -257,7 +262,6 @@ export class ExpensesService {
                 newPaid >= toNum(due.amount) - 0.001,
                 due.id,
             ]);
-            await client.query('UPDATE accounts SET balance = balance - $1 WHERE id = $2', [toPay, source.id]);
 
             const { rows: paymentRows } = await client.query(
                 `INSERT INTO payments (user_id, account_id, source_account_id, due_id, amount, note)
@@ -273,6 +277,27 @@ export class ExpensesService {
         } finally {
             client.release();
         }
+    }
+
+    /** Descuenta de una cuenta cualquiera (efectivo, débito u otra tarjeta). */
+    private static async deductFromAccount(client: PoolClient, userId: number, accountId: number, amount: number): Promise<number> {
+        const { rows: sourceRows } = await client.query(
+            'SELECT id FROM accounts WHERE id = $1 AND user_id = $2 FOR UPDATE',
+            [accountId, userId]
+        );
+        if (!sourceRows[0]) throw new HttpError(404, 'Cuenta de origen no encontrada');
+        await client.query('UPDATE accounts SET balance = balance - $1 WHERE id = $2', [amount, accountId]);
+        return accountId;
+    }
+
+    /** Descuenta de los ahorros (inserta la fila si no existe). */
+    private static async deductFromSavings(client: PoolClient, userId: number, amount: number): Promise<void> {
+        await client.query(
+            `INSERT INTO user_savings (user_id, total_amount, currency)
+             VALUES ($1, 0 - $2::numeric, 'USD')
+             ON CONFLICT (user_id) DO UPDATE SET total_amount = user_savings.total_amount - $2::numeric, updated_at = NOW()`,
+            [userId, amount]
+        );
     }
 
     /** Calendario: todo lo que vence en un rango de fechas (dues + gastos únicos). */

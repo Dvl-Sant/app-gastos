@@ -50,12 +50,14 @@ export class AccountsController {
 
     static async pay(req: AuthRequest, res: Response, next: NextFunction) {
         try {
-            const { amount, source_account_id } = req.body;
+            const { amount, source_kind, source_account_id } = req.body;
+            const source =
+                source_kind === 'savings' ? { kind: 'savings' as const } : { kind: 'account' as const, account_id: Number(source_account_id) };
             const result = await AccountsService.payStatement(
                 req.user!.id,
                 Number(req.params.id),
                 amount === 'full' ? 'full' : Number(amount),
-                Number(source_account_id)
+                source
             );
             res.json(result);
         } catch (error) {

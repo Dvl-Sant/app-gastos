@@ -10,6 +10,6 @@ router.post('/', validateBody(ACCOUNT_FIELDS, ['name', 'type']), AccountsControl
 router.put('/:id', validateBody(ACCOUNT_FIELDS), AccountsController.update);
 router.delete('/:id', AccountsController.remove);
 router.get('/:id/statement', AccountsController.statement);
-router.post('/:id/pay', validateBody(['amount', 'source_account_id'], ['source_account_id']), AccountsController.pay);
+router.post('/:id/pay', validateBody(['amount', 'source_kind', 'source_account_id'], ['amount', 'source_kind']), AccountsController.pay);
 
 export default router;

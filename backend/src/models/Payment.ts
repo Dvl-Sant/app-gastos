@@ -12,3 +12,9 @@ export interface Payment {
     source_account_name?: string | null;
     expense_name?: string | null;
 }
+
+/** De dónde sale el dinero de un pago: una cuenta/tarjeta o los ahorros. */
+export interface PaymentSource {
+    kind: 'account' | 'savings';
+    account_id?: number;
+}

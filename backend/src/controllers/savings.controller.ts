@@ -22,4 +22,18 @@ export class SavingsController {
             next(error);
         }
     }
+
+    static async transfer(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const result = await SavingsService.transfer(
+                req.user!.id,
+                Number(req.body.amount),
+                Number(req.body.source_account_id),
+                req.body.note
+            );
+            res.json(result);
+        } catch (error) {
+            next(error);
+        }
+    }
 }

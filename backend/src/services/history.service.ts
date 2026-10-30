@@ -7,7 +7,12 @@ export class HistoryService {
             `SELECT p.id, p.amount, p.note, p.paid_at, p.due_id,
                     a.name AS account_name, a.id AS account_id,
                     sa.name AS source_account_name,
-                    e.name AS expense_name
+                    e.name AS expense_name,
+                    e.installments,
+                    CASE WHEN e.installments IS NOT NULL THEN
+                        (SELECT COUNT(*)::int FROM dues d2
+                         WHERE d2.expense_id = d.expense_id AND d2.due_date <= d.due_date)
+                    END AS installment_no
              FROM payments p
              JOIN accounts a ON a.id = p.account_id
              LEFT JOIN accounts sa ON sa.id = p.source_account_id
