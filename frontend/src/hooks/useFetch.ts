@@ -54,6 +54,7 @@ export const api = {
     },
     expenses: {
         list: () => apiFetch<Expense[]>('/expenses'),
+        getById: (id: number) => apiFetch<Expense>(`/expenses/${id}`),
         calendar: (from: string, to: string) =>
             apiFetch<Due[]>(`/expenses/calendar?from=${from}&to=${to}`),
         create: (body: unknown) =>

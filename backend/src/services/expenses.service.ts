@@ -315,22 +315,162 @@ export class ExpensesService {
         return rows;
     }
 
+    /**
+     * Edita un gasto (nombre, montos, día/fecha, mensualidades).
+     * Si cambia un dato que afecta el calendario, las mensualidades NO pagadas
+     * se eliminan y se regeneran con el nuevo valor; las pagadas se conservan
+     * intactas junto con su historial.
+     */
     static async update(id: number, userId: number, data: UpdateExpenseDTO): Promise<Expense | null> {
-        const fields: string[] = [];
-        const values: unknown[] = [];
-        let idx = 1;
-        for (const key of ['name', 'category'] as const) {
-            if (data[key] !== undefined) {
-                fields.push(`${key} = $${idx}`);
-                values.push(data[key]);
-                idx++;
-            }
-        }
-        if (fields.length === 0) return this.getById(id, userId);
+        const client = await getClient();
+        try {
+            await client.query('BEGIN');
 
-        values.push(id, userId);
-        await pool.query(`UPDATE expenses SET ${fields.join(', ')} WHERE id = $${idx} AND user_id = $${idx + 1}`, values);
-        return this.getById(id, userId);
+            const { rows: expRows } = await client.query(
+                'SELECT * FROM expenses WHERE id = $1 AND user_id = $2 FOR UPDATE',
+                [id, userId]
+            );
+            const existing = expRows[0];
+            if (!existing) {
+                await client.query('ROLLBACK');
+                return null;
+            }
+
+            const { rows: accRows } = await client.query('SELECT * FROM accounts WHERE id = $1', [existing.account_id]);
+            const account = accRows[0];
+
+            // 1. Actualiza los campos escalares enviados
+            const fields: string[] = [];
+            const values: unknown[] = [];
+            let idx = 1;
+            for (const key of ['name', 'category', 'monthly_payment', 'total_amount', 'due_day', 'purchase_date', 'installments'] as const) {
+                if ((data as Record<string, unknown>)[key] !== undefined) {
+                    fields.push(`${key} = $${idx}`);
+                    values.push((data as Record<string, unknown>)[key]);
+                    idx++;
+                }
+            }
+            if (fields.length > 0) {
+                values.push(id, userId);
+                await client.query(
+                    `UPDATE expenses SET ${fields.join(', ')} WHERE id = $${idx} AND user_id = $${idx + 1}`,
+                    values
+                );
+            }
+
+            // Estado final del gasto tras aplicar los cambios
+            const next = { ...existing, ...(data as Record<string, unknown>) };
+
+            const scheduleChanged =
+                (existing.expense_type === 'recurrente' &&
+                    (data.monthly_payment !== undefined || data.due_day !== undefined)) ||
+                (existing.expense_type === 'unico' &&
+                    (data.total_amount !== undefined || data.purchase_date !== undefined)) ||
+                (existing.expense_type === 'msi' &&
+                    (data.total_amount !== undefined || data.installments !== undefined || data.purchase_date !== undefined));
+
+            if (scheduleChanged) {
+                if (next.expense_type === 'recurrente') {
+                    await client.query('DELETE FROM dues WHERE expense_id = $1 AND is_paid = false', [id]);
+                    const { rows: paidRows } = await client.query(
+                        'SELECT MAX(due_date) AS last FROM dues WHERE expense_id = $1 AND is_paid = true',
+                        [id]
+                    );
+                    let anchor: string;
+                    if (paidRows[0].last) {
+                        anchor = addMonths(paidRows[0].last, 1);
+                    } else {
+                        const monthAnchor = String(next.purchase_date).slice(0, 8) + '01';
+                        const candidate = nextCutDate(monthAnchor, next.due_day);
+                        anchor = candidate >= next.purchase_date ? candidate : addMonths(candidate, 1);
+                    }
+                    for (let i = 0; i < RECURRENT_HORIZON_MONTHS; i++) {
+                        const dueDate = addMonths(anchor, i);
+                        const cutDate =
+                            account.type === 'credito' && account.cut_off_day ? nextCutDate(dueDate, account.cut_off_day) : null;
+                        await client.query(
+                            `INSERT INTO dues (user_id, expense_id, account_id, due_date, cut_date, amount)
+                             VALUES ($1, $2, $3, $4, $5, $6)
+                             ON CONFLICT (expense_id, due_date) DO NOTHING`,
+                            [userId, id, existing.account_id, dueDate, cutDate, next.monthly_payment]
+                        );
+                    }
+                } else if (next.expense_type === 'unico') {
+                    const { rows: oldDueRows } = await client.query(
+                        'SELECT * FROM dues WHERE expense_id = $1 ORDER BY due_date LIMIT 1',
+                        [id]
+                    );
+                    const oldDue = oldDueRows[0];
+                    const isPaid = oldDue ? oldDue.is_paid : next.is_paid;
+                    const paidAmount = oldDue ? toNum(oldDue.paid_amount) : isPaid ? toNum(next.total_amount) : 0;
+                    await client.query('DELETE FROM dues WHERE expense_id = $1', [id]);
+
+                    let dueDate: string;
+                    let cutDate: string | null = null;
+                    if (account.type === 'credito') {
+                        cutDate = nextCutDate(next.purchase_date, account.cut_off_day ?? 28);
+                        dueDate = account.payment_due_day
+                            ? paymentDateForCut(cutDate, account.cut_off_day ?? 28, account.payment_due_day)
+                            : cutDate;
+                    } else {
+                        dueDate = next.purchase_date;
+                    }
+                    await client.query(
+                        `INSERT INTO dues (user_id, expense_id, account_id, due_date, cut_date, amount, paid_amount, is_paid)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                        [userId, id, existing.account_id, dueDate, cutDate, next.total_amount, paidAmount, isPaid]
+                    );
+                } else {
+                    // MSI: conserva pagadas; las restantes se recalculan con el nuevo monto total
+                    const { rows: paidRows } = await client.query(
+                        'SELECT COUNT(*)::int AS n, COALESCE(SUM(amount), 0) AS sum FROM dues WHERE expense_id = $1 AND is_paid = true',
+                        [id]
+                    );
+                    const paidCount: number = paidRows[0].n;
+                    const paidSum = toNum(paidRows[0].sum);
+                    const targetInstallments = Number(next.installments ?? existing.installments);
+                    const remaining = Math.max(0, targetInstallments - paidCount);
+                    await client.query('DELETE FROM dues WHERE expense_id = $1 AND is_paid = false', [id]);
+
+                    if (remaining > 0) {
+                        const outstanding = Math.max(0, toNum(next.total_amount) - paidSum);
+                        const monthly = Math.round((outstanding / remaining) * 100) / 100;
+                        await client.query('UPDATE expenses SET monthly_payment = $1 WHERE id = $2', [monthly, id]);
+
+                        const { rows: lastCutRows } = await client.query(
+                            'SELECT MAX(cut_date) AS last FROM dues WHERE expense_id = $1 AND is_paid = true',
+                            [id]
+                        );
+                        const firstCut = lastCutRows[0].last
+                            ? addMonths(lastCutRows[0].last, 1)
+                            : nextCutDate(next.purchase_date, account.cut_off_day);
+
+                        for (let i = 0; i < remaining; i++) {
+                            const cycleCut = addMonths(firstCut, i);
+                            const dueDate = account.payment_due_day
+                                ? paymentDateForCut(cycleCut, account.cut_off_day, account.payment_due_day)
+                                : cycleCut;
+                            const amount = i === remaining - 1 ? Math.round((outstanding - monthly * (remaining - 1)) * 100) / 100 : monthly;
+                            await client.query(
+                                `INSERT INTO dues (user_id, expense_id, account_id, due_date, cut_date, amount)
+                                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                                [userId, id, existing.account_id, dueDate, cycleCut, amount]
+                            );
+                        }
+                    } else {
+                        await client.query('UPDATE expenses SET monthly_payment = 0 WHERE id = $1', [id]);
+                    }
+                }
+            }
+
+            await client.query('COMMIT');
+            return this.getById(id, userId);
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
     }
 
     static async remove(id: number, userId: number): Promise<boolean> {

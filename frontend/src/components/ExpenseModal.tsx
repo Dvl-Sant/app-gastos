@@ -109,16 +109,23 @@ export default function ExpenseModal({ open, accounts, editing, onCancel, onSubm
             centered
             destroyOnClose
         >
+            {editing && (
+                <p className="text-xs text-slate-500 bg-amber-50 rounded-lg p-3 mt-4">
+                    Al guardar, las mensualidades <b>no pagadas</b> se regeneran con los nuevos valores; las pagadas y
+                    su historial se conservan.
+                </p>
+            )}
             <Form form={form} layout="vertical" className="mt-4" requiredMark={false}>
                 <Form.Item label="Tipo de gasto" className="mb-4">
                     <Segmented
                         block
                         value={type}
                         onChange={(v) => setType(v as ExpenseType)}
+                        disabled={Boolean(editing)}
                         options={(Object.keys(typeLabels) as ExpenseType[]).map((t) => ({
                             label: typeLabels[t],
                             value: t,
-                            disabled: t === 'msi' && creditAccounts.length === 0,
+                            disabled: !editing && t === 'msi' && creditAccounts.length === 0,
                         }))}
                     />
                 </Form.Item>
@@ -127,14 +134,16 @@ export default function ExpenseModal({ open, accounts, editing, onCancel, onSubm
                     name="account_id"
                     label="Cuenta / Tarjeta"
                     rules={[{ required: true, message: 'Selecciona la cuenta' }]}
+                    extra={editing ? 'La cuenta no se puede cambiar al editar; elimina y vuelve a crear si lo necesitas.' : undefined}
                 >
                     <Select
                         placeholder="¿Dónde se carga este gasto?"
                         onChange={(v: number) => setAccountId(v)}
+                        disabled={Boolean(editing)}
                         options={accounts.map((a) => ({
                             value: a.id,
                             label: `${a.name} (${a.type === 'credito' ? `Crédito, corte día ${a.cut_off_day}` : a.type === 'debito' ? 'Débito' : 'Efectivo'})`,
-                            disabled: type === 'msi' && a.type !== 'credito',
+                            disabled: !editing && type === 'msi' && a.type !== 'credito',
                         }))}
                     />
                 </Form.Item>

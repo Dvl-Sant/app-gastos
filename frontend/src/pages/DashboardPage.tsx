@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { CalendarClock, CreditCard, DollarSign, Pencil, Plus, TrendingUp, User } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import DuesTable from '../components/DuesTable';
+import ExpensesList from '../components/ExpensesList';
 import IncomesTable from '../components/IncomesTable';
 import ExpenseModal from '../components/ExpenseModal';
 import IncomeModal from '../components/IncomeModal';
@@ -13,7 +14,7 @@ import SavingsModal, { type SavingsFormValues, type TransferFormValues } from '.
 import PaymentModal from '../components/PaymentModal';
 import type { PaymentSourceInput } from '../hooks/useFetch';
 import { api, useFetch } from '../hooks/useFetch';
-import type { Due, Income } from '../types';
+import type { Due, Expense, Income } from '../types';
 import { formatCurrency } from '../utils/format';
 
 const typeBadge: Record<string, string> = {
@@ -31,11 +32,14 @@ export default function DashboardPage() {
     const savings = useFetch(api.savings.get);
 
     const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+    const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     const [incomeModalOpen, setIncomeModalOpen] = useState(false);
     const [editingIncome, setEditingIncome] = useState<Income | null>(null);
     const [savingsModalOpen, setSavingsModalOpen] = useState(false);
     const [payingDue, setPayingDue] = useState<Due | null>(null);
     const [viewMonth, setViewMonth] = useState<Dayjs>(dayjs());
+
+    const expensesList = useFetch(api.expenses.list);
 
     const monthDues = useFetch(
         () =>
@@ -52,15 +56,32 @@ export default function DashboardPage() {
         void incomes.reload();
         void savings.reload();
         void monthDues.reload();
+        void expensesList.reload();
     };
 
     const handleError = (e: unknown) => message.error(e instanceof Error ? e.message : 'Error inesperado');
 
-    const submitExpense = async (payload: Record<string, unknown>, _editingId: number | null) => {
+    const submitExpense = async (payload: Record<string, unknown>, editingId: number | null) => {
         try {
-            await api.expenses.create(payload);
-            message.success('Gasto agregado');
+            if (editingId) {
+                await api.expenses.update(editingId, payload);
+                message.success('Gasto actualizado');
+            } else {
+                await api.expenses.create(payload);
+                message.success('Gasto agregado');
+            }
             setExpenseModalOpen(false);
+            setEditingExpense(null);
+            refreshAll();
+        } catch (e) {
+            handleError(e);
+        }
+    };
+
+    const deleteExpense = async (expense: Expense) => {
+        try {
+            await api.expenses.remove(expense.id);
+            message.success('Gasto eliminado');
             refreshAll();
         } catch (e) {
             handleError(e);
@@ -284,8 +305,36 @@ export default function DashboardPage() {
                     </div>
                 </motion.section>
 
+                {/* Gastos declarados */}
+                <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.35, ease: 'easeOut' }}>
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                        <h3 className="text-lg font-bold text-slate-800">Gastos declarados</h3>
+                        <Button
+                            icon={<Plus className="w-4 h-4" />}
+                            onClick={() => {
+                                setEditingExpense(null);
+                                setExpenseModalOpen(true);
+                            }}
+                            className="!text-primary !bg-primary/5 !rounded-full !font-bold !text-sm !px-3"
+                        >
+                            Agregar
+                        </Button>
+                    </div>
+                    <div className="bg-white rounded-xl border border-border-subtle overflow-hidden shadow-sm">
+                        <ExpensesList
+                            expenses={expensesList.data ?? []}
+                            loading={expensesList.loading}
+                            onEdit={(expense) => {
+                                setEditingExpense(expense);
+                                setExpenseModalOpen(true);
+                            }}
+                            onDelete={deleteExpense}
+                        />
+                    </div>
+                </motion.section>
+
                 {/* Ingresos */}
-                <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24, duration: 0.35, ease: 'easeOut' }}>
+                <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28, duration: 0.35, ease: 'easeOut' }}>
                     <h3 className="text-lg font-bold mb-4 text-slate-800">Mis Ingresos</h3>
                     <div className="bg-white rounded-xl border border-border-subtle overflow-hidden shadow-sm">
                         {incomes.loading ? (
@@ -321,8 +370,11 @@ export default function DashboardPage() {
             <ExpenseModal
                 open={expenseModalOpen}
                 accounts={accounts.data ?? []}
-                editing={null}
-                onCancel={() => setExpenseModalOpen(false)}
+                editing={editingExpense}
+                onCancel={() => {
+                    setExpenseModalOpen(false);
+                    setEditingExpense(null);
+                }}
                 onSubmit={submitExpense}
             />
             <IncomeModal

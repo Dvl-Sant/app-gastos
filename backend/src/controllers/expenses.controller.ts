@@ -24,6 +24,16 @@ export class ExpensesController {
         }
     }
 
+    static async getById(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            const expense = await ExpensesService.getById(Number(req.params.id), req.user!.id);
+            if (!expense) return res.status(404).json({ status: 'error', message: 'Gasto no encontrado' });
+            res.json(expense);
+        } catch (error) {
+            next(error);
+        }
+    }
+
     static async create(req: AuthRequest, res: Response, next: NextFunction) {
         try {
             const expense = await ExpensesService.create(req.user!.id, req.body);

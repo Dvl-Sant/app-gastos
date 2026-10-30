@@ -57,7 +57,9 @@ export interface CreateExpenseDTO {
     is_paid?: boolean;
 }
 
-export type UpdateExpenseDTO = Partial<Pick<Expense, 'name' | 'category'>>;
+export type UpdateExpenseDTO = Partial<
+    Pick<Expense, 'name' | 'category' | 'monthly_payment' | 'total_amount' | 'due_day' | 'purchase_date' | 'installments'>
+>;
 
 export const EXPENSE_FIELDS = [
     'account_id',
