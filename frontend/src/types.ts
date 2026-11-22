@@ -123,6 +123,7 @@ export interface DashboardSummary {
     };
     accounts: AccountCycle[];
     upcoming: Due[];
+    shared: SharedAlert[];
 }
 
 export interface PaymentEntry {
@@ -143,4 +144,59 @@ export interface HistoryGroup {
     kind: 'pagos' | 'traspasos';
     total: number;
     payments: PaymentEntry[];
+}
+
+// --- Gastos compartidos (suscripciones familiares) ---
+
+export interface SharedGroup {
+    id: number;
+    name: string;
+    member_cuota: string;
+    due_day: number | null;
+    total_cost: string | null;
+    members_count?: number;
+}
+
+export type SharedMemberStatus = 'pagado' | 'pendiente' | 'por_vencer' | 'adelantado';
+
+export interface SharedMemberRow {
+    id: number;
+    name: string;
+    note: string | null;
+    active: boolean;
+    status: SharedMemberStatus;
+    advance_until: string | null;
+    last_payment_at: string | null;
+    total_paid: number;
+    paid_current: boolean;
+}
+
+export interface SharedPaymentEntry {
+    id: number;
+    member_id: number;
+    period: string;
+    amount: string;
+    paid_at: string;
+    note: string | null;
+    member_name?: string;
+}
+
+export interface SharedGroupDetail {
+    group: SharedGroup;
+    members: SharedMemberRow[];
+    recent_payments: SharedPaymentEntry[];
+}
+
+export interface SharedAlert {
+    id: number;
+    name: string;
+    due_day: number | null;
+    member_cuota: number;
+    total_cost: number | null;
+    active_members: number;
+    paid_count: number;
+    pending: { id: number; name: string }[];
+    advance: { name: string; until: string }[];
+    collected: number;
+    expected: number;
 }

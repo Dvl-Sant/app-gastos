@@ -13,6 +13,7 @@ import historyRoutes from './routes/history.routes';
 import accountsRoutes from './routes/accounts.routes';
 import duesRoutes from './routes/dues.routes';
 import cashflowRoutes from './routes/cashflow.routes';
+import sharedRoutes from './routes/shared.routes';
 import { authenticateToken } from './middleware/auth.middleware';
 import { config } from './config';
 import { HttpError } from './utils/errors';
@@ -48,6 +49,7 @@ app.use('/api/analytics', authenticateToken, analyticsRoutes);
 app.use('/api/accounts', authenticateToken, accountsRoutes);
 app.use('/api/dues', authenticateToken, duesRoutes);
 app.use('/api/cashflow', authenticateToken, cashflowRoutes);
+app.use('/api/shared', authenticateToken, sharedRoutes);
 
 app.use((_req: Request, res: Response) => {
     res.status(404).json({ status: 'error', message: 'Ruta no encontrada' });

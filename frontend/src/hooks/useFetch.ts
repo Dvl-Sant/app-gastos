@@ -90,4 +90,29 @@ export const api = {
     },
     cashflow: (from: string, to: string) => apiFetch<Cashflow>(`/cashflow?from=${from}&to=${to}`),
     history: () => apiFetch<HistoryGroup[]>('/history'),
+    shared: {
+        summary: () => apiFetch<import('../types').SharedAlert[]>('/shared/summary'),
+        groups: {
+            list: () => apiFetch<import('../types').SharedGroup[]>('/shared/groups'),
+            create: (body: unknown) =>
+                apiFetch<import('../types').SharedGroup>('/shared/groups', { method: 'POST', body: JSON.stringify(body) }),
+            update: (id: number, body: unknown) =>
+                apiFetch<import('../types').SharedGroup>(`/shared/groups/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+            remove: (id: number) => apiFetch<void>(`/shared/groups/${id}`, { method: 'DELETE' }),
+            detail: (id: number) => apiFetch<import('../types').SharedGroupDetail>(`/shared/groups/${id}`),
+        },
+        members: {
+            create: (groupId: number, body: unknown) =>
+                apiFetch<unknown>(`/shared/groups/${groupId}/members`, { method: 'POST', body: JSON.stringify(body) }),
+            update: (id: number, body: unknown) =>
+                apiFetch<unknown>(`/shared/members/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+            remove: (id: number) => apiFetch<void>(`/shared/members/${id}`, { method: 'DELETE' }),
+        },
+        pay: (memberId: number, body: { months: number; amount?: number; note?: string }) =>
+            apiFetch<{ periods: string[]; total: number; credited: number }>(`/shared/members/${memberId}/pay`, {
+                method: 'POST',
+                body: JSON.stringify(body),
+            }),
+        removePayment: (id: number) => apiFetch<{ amount: number }>(`/shared/payments/${id}`, { method: 'DELETE' }),
+    },
 };

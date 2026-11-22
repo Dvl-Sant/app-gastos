@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Alert, App as AntApp, Button, DatePicker, Skeleton, Statistic } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { motion } from 'framer-motion';
-import { CalendarClock, CreditCard, DollarSign, Pencil, Plus, TrendingUp, User } from 'lucide-react';
+import { CalendarClock, CreditCard, DollarSign, Pencil, Plus, TrendingUp, User, Users } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import DuesTable from '../components/DuesTable';
 import ExpensesList from '../components/ExpensesList';
@@ -289,6 +289,59 @@ export default function DashboardPage() {
                         })}
                     </div>
                 </motion.section>
+
+                {/* Pagos compartidos */}
+                {(summary?.shared ?? []).length > 0 && (
+                    <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12, duration: 0.35, ease: 'easeOut' }}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <Users className="w-5 h-5 text-primary" /> Pagos Compartidos
+                            </h3>
+                            <Button icon={<Plus className="w-4 h-4" />} onClick={() => navigate('/shared')} className="!text-primary !bg-primary/5 !rounded-full !font-bold !text-sm !px-3">
+                                Gestionar
+                            </Button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {(summary?.shared ?? []).map((group) => (
+                                <motion.button
+                                    key={group.id}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => navigate('/shared')}
+                                    className="text-left bg-white rounded-xl border border-border-subtle shadow-sm p-4"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-bold text-slate-900 flex items-center gap-2">
+                                            <Users className="w-4 h-4 text-primary" />
+                                            {group.name}
+                                        </span>
+                                        <span
+                                            className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                                                group.pending.length === 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+                                            }`}
+                                        >
+                                            {group.paid_count}/{group.active_members} pagaron
+                                        </span>
+                                    </div>
+                                    {group.pending.length > 0 && (
+                                        <p className="mt-2 text-xs font-semibold text-danger">
+                                            Deben: {group.pending.map((p) => p.name).join(', ')}
+                                        </p>
+                                    )}
+                                    {group.advance.length > 0 && (
+                                        <p className="mt-1 text-xs font-semibold text-blue-500">
+                                            Adelantados: {group.advance.map((a) => `${a.name} (hasta ${a.until})`).join(', ')}
+                                        </p>
+                                    )}
+                                    <p className="mt-2 text-[11px] text-slate-400">
+                                        Recibido: {formatCurrency(group.collected)}
+                                        {group.expected > 0 ? ` / ${formatCurrency(group.expected)}` : ''}
+                                    </p>
+                                </motion.button>
+                            ))}
+                        </div>
+                    </motion.section>
+                )}
 
                 {/* Vencimientos del mes */}
                 <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16, duration: 0.35, ease: 'easeOut' }}>

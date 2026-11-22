@@ -21,7 +21,8 @@ Bienvenido a **AppGastos**, una aplicación de finanzas personales enfocada en e
   - `unico` — con fecha real; se acredita a Efectivo cuando llega el día.
 - **Ahorros**: saldo independiente con **traspasos** desde cuentas de efectivo/débito (registrados en `savings_movements`), o definición manual del total. Los pagos pueden salir de los ahorros.
 - **Flujo**: cualquier rango de fechas muestra vencimientos, ingresos proyectados y neto por mes. El Panel tiene un selector de mes para ver *todos* los vencimientos (incluye MSI lejanos).
-- **Historial**: pagos agrupados por cuenta, con el número de mensualidad (`1/3`, `2/3`…) en gastos a meses.
+- **Historial**: pagos agrupados por cuenta, con el número de mensualidad (`1/3`, `2/3`…) en gastos a meses y los traspasos a ahorros.
+- **Gastos compartidos**: suscripciones familiares tipo "Spotify Familiar" — registras a los miembros/invitados, cada pago mensual cubierto (uno o varios meses por adelantado) y alertas de quién no ha pagado. Cada pago registrado se acredita a Efectivo.
 
 ## 🛠️ Tecnologías
 

@@ -4,6 +4,7 @@ import { Due } from '../models/Expense';
 import { ExpensesService } from './expenses.service';
 import { IncomesService } from './incomes.service';
 import { AccountsService } from './accounts.service';
+import { SharedService } from './shared.service';
 
 export interface AccountCycleSummary {
     id: number;
@@ -81,6 +82,8 @@ export class DashboardService {
             [userId, reference]
         );
 
+        const shared = await SharedService.getAlerts(userId);
+
         return {
             savings,
             currency: 'USD',
@@ -94,6 +97,7 @@ export class DashboardService {
             },
             accounts: accountSummaries,
             upcoming: upcoming as Due[],
+            shared,
         };
     }
 }
