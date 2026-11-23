@@ -70,7 +70,7 @@ docker compose up --build
 ```
 
 - Frontend: http://localhost:8082 (nginx + proxy `/api`)
-- API: http://localhost:3002
+- API (host): http://localhost:3002 → contenedor interno en 3000
 - PostgreSQL (host): puerto 5435
 
 > Puertos elegidos para no chocar con otros proyectos Docker del equipo (3000/3001/5433/6379/8080/8081). Configurables en `.env` y `docker-compose.yml`.

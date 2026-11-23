@@ -4,7 +4,7 @@ services:
       context: ./backend
       target: dev
     ports:
-      - "3002:3002"
+      - "3002:3000"
     volumes:
       - ./backend:/app
       - /app/node_modules
