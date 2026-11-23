@@ -1,0 +1,55 @@
+# ============================================
+# Compose de PRODUCCIÓN para Dokploy
+# (el de desarrollo es docker-compose.yml)
+# Los secretos se inyectan desde el entorno de Dokploy:
+#   JWT_SECRET, DB_USER, DB_PASSWORD, DB_NAME
+# Sin puertos publicados: Dokploy/traefik atacha los dominios
+# directamente a los servicios (frontend:80, api:3000).
+# ============================================
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:?required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?required}
+      POSTGRES_DB: ${DB_NAME:?required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      target: prod
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET:?required}
+      - CORS_ORIGIN=*
+      - TZ=America/Mexico_City
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
