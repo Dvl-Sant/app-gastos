@@ -43,6 +43,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      default:
+        # Alias único en la red: 'api' colisiona con servicios de otros
+        # proyectos de Dokploy en la red compartida (502 intermitente)
+        aliases:
+          - appgastos-api
 
   frontend:
     build:

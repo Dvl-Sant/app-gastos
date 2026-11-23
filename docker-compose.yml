@@ -17,6 +17,10 @@ services:
     depends_on:
       - db
     restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - appgastos-api
 
   frontend:
     build:
