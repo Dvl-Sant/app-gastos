@@ -1,8 +1,32 @@
 import pool from '../db/pool';
 
+export interface HistoryInflow {
+    id: string;
+    kind: 'ingreso' | 'compartido';
+    name: string;
+    detail: string;
+    amount: string;
+    date: string;
+    note: string | null;
+}
+
 export class HistoryService {
-    /** Pagos recientes agrupados por cuenta destino + traspasos a ahorros. */
-    static async getRecentPayments(userId: number) {
+    /**
+     * Historial por rango de fechas (opcional): pagos por cuenta destino,
+     * traspasos a ahorros y dinero que ENTRA (ingresos liquidados y pagos
+     * de miembros en gastos compartidos).
+     */
+    static async getHistory(userId: number, from?: string, to?: string) {
+        const hasRange = Boolean(
+            from && to && /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to)
+        );
+        const rangeParams = hasRange ? [from, to] : [];
+        const paidRange = hasRange ? ' AND p.paid_at::date BETWEEN $2 AND $3' : '';
+        const createdRange = hasRange ? ' AND sm.created_at::date BETWEEN $2 AND $3' : '';
+        const sharedRange = hasRange ? ' AND sp.paid_at::date BETWEEN $2 AND $3' : '';
+        const settledRange = hasRange ? ' AND s.settled_date BETWEEN $2 AND $3' : '';
+
+        // Pagos de deudas (dinero que sale), agrupados por cuenta destino
         const { rows } = await pool.query(
             `SELECT p.id, p.amount, p.note, p.paid_at, p.due_id,
                     a.name AS account_name, a.id AS account_id,
@@ -18,10 +42,10 @@ export class HistoryService {
              LEFT JOIN accounts sa ON sa.id = p.source_account_id
              LEFT JOIN dues d ON d.id = p.due_id
              LEFT JOIN expenses e ON e.id = d.expense_id
-             WHERE p.user_id = $1
+             WHERE p.user_id = $1${paidRange}
              ORDER BY p.paid_at DESC
              LIMIT 200`,
-            [userId]
+            [userId, ...rangeParams]
         );
 
         const groups = new Map<number, { account_id: number; account_name: string; kind: string; total: number; payments: typeof rows }>();
@@ -44,16 +68,16 @@ export class HistoryService {
             total: Math.round(g.total * 100) / 100,
         }));
 
-        // Traspasos a ahorros, como grupo propio ordenado por el más reciente
+        // Traspasos a ahorros
         const { rows: transfers } = await pool.query(
             `SELECT sm.id, sm.amount, sm.note, sm.created_at,
                     a.name AS source_account_name
              FROM savings_movements sm
              LEFT JOIN accounts a ON a.id = sm.source_account_id
-             WHERE sm.user_id = $1
+             WHERE sm.user_id = $1${createdRange}
              ORDER BY sm.created_at DESC
              LIMIT 100`,
-            [userId]
+            [userId, ...rangeParams]
         );
 
         if (transfers.length > 0) {
@@ -74,6 +98,51 @@ export class HistoryService {
             });
         }
 
-        return result;
+        // Dinero que ENTRA: pagos de miembros en gastos compartidos
+        const { rows: sharedRows } = await pool.query(
+            `SELECT sp.id, sp.amount, sp.paid_at, sp.period, sp.note,
+                    m.name AS member_name, g.name AS group_name
+             FROM shared_payments sp
+             JOIN shared_members m ON m.id = sp.member_id
+             JOIN shared_groups g ON g.id = sp.group_id
+             WHERE sp.user_id = $1${sharedRange}
+             ORDER BY sp.paid_at DESC
+             LIMIT 200`,
+            [userId, ...rangeParams]
+        );
+
+        // Dinero que ENTRA: ingresos frecuentes/únicos liquidados a Efectivo
+        const { rows: settledRows } = await pool.query(
+            `SELECT s.id, s.amount, s.settled_date, i.name AS income_name
+             FROM income_settlements s
+             JOIN incomes i ON i.id = s.income_id
+             WHERE s.user_id = $1${settledRange}
+             ORDER BY s.settled_date DESC
+             LIMIT 200`,
+            [userId, ...rangeParams]
+        );
+
+        const inflows: HistoryInflow[] = [
+            ...sharedRows.map((p) => ({
+                id: `shared-${p.id}`,
+                kind: 'compartido' as const,
+                name: p.member_name,
+                detail: `${p.group_name} • periodo ${String(p.period)}`,
+                amount: p.amount,
+                date: new Date(p.paid_at).toISOString(),
+                note: p.note,
+            })),
+            ...settledRows.map((s) => ({
+                id: `ingreso-${s.id}`,
+                kind: 'ingreso' as const,
+                name: s.income_name,
+                detail: 'Ingreso acreditado a Efectivo',
+                amount: s.amount,
+                date: `${s.settled_date}T12:00:00.000Z`,
+                note: null,
+            })),
+        ].sort((a, b) => (a.date < b.date ? 1 : -1));
+
+        return { groups: result, inflows };
     }
 }

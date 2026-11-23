@@ -17,6 +17,9 @@ export function parseISO(value: string | Date): Date {
 }
 
 export function todayISO(): string {
+    // Fecha local del servidor (no UTC): la zona se controla con la variable
+    // de entorno TZ en docker-compose (p. ej. America/Mexico_City), para que
+    // "hoy" coincida con el día del usuario y no con el día UTC.
     const now = new Date();
     return toISO(now.getFullYear(), now.getMonth(), now.getDate());
 }

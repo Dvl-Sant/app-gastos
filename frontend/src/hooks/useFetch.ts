@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type DependencyList } from 'react';
 import { apiFetch } from '../api/client';
-import type { Account, Cashflow, Due, Expense, HistoryGroup, Income, Statement } from '../types';
+import type { Account, Cashflow, Due, Expense, HistoryResponse, Income, Statement } from '../types';
 
 interface UseFetchResult<T> {
     data: T | null;
@@ -89,7 +89,8 @@ export const api = {
         summary: () => apiFetch<import('../types').DashboardSummary>('/dashboard/summary'),
     },
     cashflow: (from: string, to: string) => apiFetch<Cashflow>(`/cashflow?from=${from}&to=${to}`),
-    history: () => apiFetch<HistoryGroup[]>('/history'),
+    history: (from?: string, to?: string) =>
+        apiFetch<HistoryResponse>(`/history${from && to ? `?from=${from}&to=${to}` : ''}`),
     shared: {
         summary: () => apiFetch<import('../types').SharedAlert[]>('/shared/summary'),
         groups: {

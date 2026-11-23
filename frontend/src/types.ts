@@ -146,6 +146,21 @@ export interface HistoryGroup {
     payments: PaymentEntry[];
 }
 
+export interface InflowEntry {
+    id: string;
+    kind: 'ingreso' | 'compartido';
+    name: string;
+    detail: string;
+    amount: string;
+    date: string;
+    note: string | null;
+}
+
+export interface HistoryResponse {
+    groups: HistoryGroup[];
+    inflows: InflowEntry[];
+}
+
 // --- Gastos compartidos (suscripciones familiares) ---
 
 export interface SharedGroup {

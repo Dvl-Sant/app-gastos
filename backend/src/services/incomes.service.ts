@@ -106,9 +106,7 @@ export class IncomesService {
 
         for (const income of incomes) {
             const amount = toNum(income.amount);
-            const createdDate = income.created_at
-                ? todayUTCString(income.created_at)
-                : '0000-01-01';
+            const createdDate = income.created_at ? dateKeyOf(income.created_at) : '0000-01-01';
             const anchor = createdDate > from ? createdDate : from;
 
             if (income.income_type === 'unico') {
@@ -202,8 +200,8 @@ export class IncomesService {
     }
 }
 
-/** Fecha (UTC) de un timestamp en 'YYYY-MM-DD'. */
-function todayUTCString(timestamp: Date | string): string {
+/** Fecha (local del servidor, misma zona que todayISO) de un timestamp. */
+function dateKeyOf(timestamp: Date | string): string {
     const d = timestamp instanceof Date ? timestamp : new Date(timestamp);
-    return toISO(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    return toISO(d.getFullYear(), d.getMonth(), d.getDate());
 }
