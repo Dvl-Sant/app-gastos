@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Alert, DatePicker, Skeleton, Statistic } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { motion } from 'framer-motion';
-import { ArrowDownLeft, History } from 'lucide-react';
+import { ArrowDownLeft } from 'lucide-react';
+import receiptWallet from '../assets/receipt-wallet.svg';
 import AppHeader from '../components/AppHeader';
 import { api, useFetch } from '../hooks/useFetch';
 import { formatCurrency } from '../utils/format';
@@ -27,7 +28,7 @@ export default function HistoryPage() {
 
     return (
         <div className="flex flex-col min-h-screen bg-background-light">
-            <AppHeader icon={<History className="text-primary w-5 h-5" />} subtitle="Detalles" title="Historial de Movimientos" />
+            <AppHeader icon={<img src={receiptWallet} alt="" className="w-6 h-6" />} subtitle="Detalles" title="Historial de Movimientos" />
 
             <main className="flex-1 px-4 py-6 space-y-6 max-w-5xl w-full mx-auto">
                 {history.error && <Alert type="error" showIcon message={history.error} />}

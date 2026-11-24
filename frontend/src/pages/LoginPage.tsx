@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Form, Input, App as AntApp } from 'antd';
 import { motion } from 'framer-motion';
-import { Wallet } from 'lucide-react';
+import cardsWallet from '../assets/cards-wallet.svg';
 import { apiFetch } from '../api/client';
 import { getSession, setSession } from '../auth/session';
 import type { User } from '../types';
@@ -96,7 +96,7 @@ export default function LoginPage() {
                 <div className="p-8 pb-0">
                     <div className="text-center mb-6">
                         <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 mx-auto mb-4">
-                            <Wallet className="text-primary w-8 h-8" />
+                            <img src={cardsWallet} alt="AppGastos" className="w-9 h-9" />
                         </div>
                         <h1 className="text-2xl font-bold text-slate-900">AppGastos</h1>
                         <p className="text-sm text-slate-500 mt-1">

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Alert, App as AntApp, Button, Drawer, Segmented, Skeleton, Statistic } from 'antd';
 import { motion } from 'framer-motion';
-import { Plus, Wallet } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import cardsWallet from '../assets/cards-wallet.svg';
 import AppHeader from '../components/AppHeader';
 import CreditCardVisual from '../components/CreditCardVisual';
 import DuesTable from '../components/DuesTable';
@@ -172,7 +173,7 @@ export default function AccountsPage() {
 
     return (
         <div className="flex flex-col min-h-screen bg-background-light">
-            <AppHeader icon={<Wallet className="text-primary w-5 h-5" />} subtitle="Finanzas" title="Cuentas y Tarjetas" />
+            <AppHeader icon={<img src={cardsWallet} alt="" className="w-6 h-6" />} subtitle="Finanzas" title="Cuentas y Tarjetas" />
 
             <main className="flex-1 px-4 py-6 space-y-6 max-w-5xl w-full mx-auto">
                 {accounts.error && <Alert type="error" showIcon message={accounts.error} />}

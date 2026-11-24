@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  
+  <polygon points="37,14 30,27 44,27" fill="#FFFFFF" stroke="#1E3A5F" stroke-width="4" stroke-linejoin="round" />
+  <polygon points="37,14 34,20 40,20" fill="#1E3A5F" />
+  <rect x="30" y="27" width="14" height="29" fill="#94A3B8" stroke="#1E3A5F" stroke-width="4" />
+  <line x1="37" y1="27" x2="37" y2="54" stroke="#1E3A5F" stroke-width="3" />
+
+  
+  <g transform="rotate(10 68 48)">
+    <rect x="52" y="22" width="32" height="36" rx="4" fill="#FFFFFF" stroke="#1E3A5F" stroke-width="4" />
+    <line x1="59" y1="32" x2="77" y2="32" stroke="#94A3B8" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="59" y1="40" x2="73" y2="40" stroke="#94A3B8" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+
+  
+  <rect x="20" y="48" width="76" height="14" rx="6" fill="#CBD5E1" stroke="#1E3A5F" stroke-width="4" />
+
+  
+  <rect x="18" y="54" width="82" height="54" rx="10" fill="#2B7BE9" stroke="#1E3A5F" stroke-width="4" />
+
+  
+  <line x1="48" y1="67" x2="48" y2="95" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M55 73 C55 69.5 52 68 48 68 C44 68 41 69.8 41 73 C41 76.2 44 77.5 48 79 C52 80.5 55.5 82 55.5 85.5 C55.5 89 52 91 48 91 C43.5 91 40.5 89 40.5 86" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" />
+
+  
+  <rect x="78" y="71" width="28" height="20" rx="6" fill="#1D5DC2" stroke="#1E3A5F" stroke-width="4" />
+  <circle cx="88" cy="81" r="4" fill="#FFFFFF" stroke="#1E3A5F" stroke-width="2.5" />
+</svg>

@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Alert, App as AntApp, Button, DatePicker, Skeleton, Statistic } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { motion } from 'framer-motion';
-import { CalendarClock, DollarSign, Lightbulb, Pencil, Plus, TrendingUp, User, Users } from 'lucide-react';
+import { CalendarClock, DollarSign, Lightbulb, Pencil, Plus, TrendingUp, Users } from 'lucide-react';
+import flowWallet from '../assets/flow-wallet.svg';
+import editWallet from '../assets/edit-wallet.svg';
 import AppHeader from '../components/AppHeader';
 import CreditCardVisual from '../components/CreditCardVisual';
 import SwipeCarousel from '../components/SwipeCarousel';
@@ -168,7 +170,7 @@ export default function DashboardPage() {
 
     return (
         <div className="flex flex-col min-h-screen bg-background-light">
-            <AppHeader icon={<User className="text-primary w-5 h-5" />} subtitle="Panel" title="Mis Gastos" />
+            <AppHeader icon={<img src={flowWallet} alt="" className="w-6 h-6" />} subtitle="Panel" title="Mis Gastos" />
 
             <main className="flex-1 px-4 py-6 space-y-6 max-w-5xl w-full mx-auto">
                 {dashboard.error && <Alert type="error" showIcon message={dashboard.error} />}
@@ -370,7 +372,9 @@ export default function DashboardPage() {
                 {/* Gastos declarados */}
                 <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.35, ease: 'easeOut' }}>
                     <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                        <h3 className="text-lg font-bold text-slate-800">Gastos declarados</h3>
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <img src={editWallet} alt="" className="w-5 h-5" /> Gastos declarados
+                        </h3>
                         <Button
                             icon={<Plus className="w-4 h-4" />}
                             onClick={() => {

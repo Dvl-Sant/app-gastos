@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Alert, App as AntApp, DatePicker, Skeleton, Statistic } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { motion } from 'framer-motion';
-import { ArrowDownRight, ArrowUpRight, CalendarRange } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
+import flowWallet from '../assets/flow-wallet.svg';
 import AppHeader from '../components/AppHeader';
 import DuesTable from '../components/DuesTable';
 import PaymentModal from '../components/PaymentModal';
@@ -55,7 +56,7 @@ export default function CashflowPage() {
 
     return (
         <div className="flex flex-col min-h-screen bg-background-light">
-            <AppHeader icon={<CalendarRange className="text-primary w-5 h-5" />} subtitle="Proyección" title="Flujo por Fechas" />
+            <AppHeader icon={<img src={flowWallet} alt="" className="w-6 h-6" />} subtitle="Proyección" title="Flujo por Fechas" />
 
             <main className="flex-1 px-4 py-6 space-y-6 max-w-5xl w-full mx-auto">
                 {cashflow.error && <Alert type="error" showIcon message={cashflow.error} />}
