@@ -11,6 +11,45 @@ export interface AccountFormValues {
     color?: string;
 }
 
+const COLOR_PRESETS = [
+    '#6d28d9', // violeta
+    '#b91c1c', // rojo
+    '#1d4ed8', // azul
+    '#047857', // verde
+    '#111827', // negro
+    '#b45309', // dorado
+    '#be185d', // rosa
+    '#0f766e', // teal
+];
+
+/** Paleta de swatches + color personalizado (control de Form compatible). */
+function ColorSwatches({ value, onChange }: { value?: string; onChange?: (v: string) => void }) {
+    const current = value || COLOR_PRESETS[0];
+    return (
+        <div className="flex items-center gap-2 flex-wrap">
+            {COLOR_PRESETS.map((c) => (
+                <button
+                    type="button"
+                    key={c}
+                    onClick={() => onChange?.(c)}
+                    title={c}
+                    className={`size-8 rounded-full transition ${
+                        current.toLowerCase() === c ? 'ring-2 ring-offset-2 ring-slate-900' : 'hover:scale-110'
+                    }`}
+                    style={{ background: c }}
+                />
+            ))}
+            <input
+                type="color"
+                value={current}
+                onChange={(e) => onChange?.(e.target.value)}
+                className="size-8 rounded cursor-pointer bg-transparent"
+                title="Color personalizado"
+            />
+        </div>
+    );
+}
+
 interface Props {
     open: boolean;
     editing: Account | null;
@@ -38,12 +77,13 @@ export default function AccountModal({ open, editing, onCancel, onSubmit }: Prop
                 cut_off_day: editing.cut_off_day ?? undefined,
                 payment_due_day: editing.payment_due_day ?? undefined,
                 balance: Number(editing.balance),
-                color: editing.color ?? undefined,
+                color: editing.color ?? COLOR_PRESETS[0],
             });
             setType(editing.type);
         } else {
             form.resetFields();
             setType('credito');
+            form.setFieldsValue({ color: COLOR_PRESETS[0] });
         }
     }, [open, editing, form]);
 
@@ -128,8 +168,8 @@ export default function AccountModal({ open, editing, onCancel, onSubmit }: Prop
                     </Form.Item>
                 )}
 
-                <Form.Item name="color" label="Color (opcional)">
-                    <Input type="color" className="!w-20" />
+                <Form.Item name="color" label="Color de la tarjeta">
+                    <ColorSwatches />
                 </Form.Item>
             </Form>
         </Modal>

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Alert, App as AntApp, Button, Drawer, Popconfirm, Segmented, Skeleton, Statistic, Tag } from 'antd';
+import { Alert, App as AntApp, Button, Drawer, Segmented, Skeleton, Statistic } from 'antd';
 import { motion } from 'framer-motion';
-import { CreditCard, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
+import { Plus, Wallet } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
+import CreditCardVisual from '../components/CreditCardVisual';
 import DuesTable from '../components/DuesTable';
 import AccountModal from '../components/AccountModal';
 import ExpenseModal from '../components/ExpenseModal';
@@ -12,12 +13,6 @@ import type { PaymentSourceInput } from '../hooks/useFetch';
 import { api, useFetch } from '../hooks/useFetch';
 import type { Account, Due, Expense } from '../types';
 import { formatCurrency } from '../utils/format';
-
-const typeMeta: Record<string, { label: string; badge: string }> = {
-    credito: { label: 'Crédito', badge: 'bg-purple-50 text-purple-600' },
-    debito: { label: 'Débito', badge: 'bg-blue-50 text-blue-600' },
-    efectivo: { label: 'Efectivo', badge: 'bg-green-50 text-green-600' },
-};
 
 export default function AccountsPage() {
     const { message, modal } = AntApp.useApp();
@@ -217,69 +212,16 @@ export default function AccountsPage() {
                                 initial={{ opacity: 0, y: 12 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.05, duration: 0.3 }}
-                                whileHover={{ scale: 1.02 }}
-                                className="bg-white rounded-xl border border-border-subtle shadow-sm p-4 cursor-pointer"
-                                onClick={() => setStatementAccountId(account.id)}
                             >
-                                <div className="flex items-center justify-between">
-                                    <span className="font-bold text-slate-900 flex items-center gap-2">
-                                        <CreditCard className="w-4 h-4 text-primary" />
-                                        {account.name}
-                                    </span>
-                                    <Tag color={account.type === 'credito' ? 'purple' : account.type === 'debito' ? 'blue' : 'green'} className="!m-0 uppercase !text-[10px] !font-bold">
-                                        {typeMeta[account.type]?.label ?? account.type}
-                                    </Tag>
-                                </div>
-
-                                {account.type === 'credito' ? (
-                                    <>
-                                        <div className="mt-3">
-                                            <p className="text-[10px] text-slate-500 font-bold uppercase">Deuda pendiente total</p>
-                                            <p className="text-xl font-extrabold text-danger">{formatCurrency(account.pending_debt ?? 0)}</p>
-                                        </div>
-                                        <div className="mt-2 flex items-center justify-between gap-2">
-                                            <p className="text-[11px] text-slate-400 font-semibold">
-                                                Corte día {account.cut_off_day}
-                                                {account.payment_due_day ? ` • Pago límite día ${account.payment_due_day}` : ''}
-                                            </p>
-                                            {account.next_payment_date && typeof account.days_until_payment === 'number' && (
-                                                <Tag
-                                                    color={account.days_until_payment <= 5 ? 'red' : 'green'}
-                                                    className="!m-0 !text-[10px] !font-bold whitespace-nowrap"
-                                                >
-                                                    Paga: {new Date(`${account.next_payment_date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} (en {account.days_until_payment}d)
-                                                </Tag>
-                                            )}
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="mt-3">
-                                        <p className="text-[10px] text-slate-500 font-bold uppercase">Saldo</p>
-                                        <p className="text-xl font-extrabold text-success">{formatCurrency(account.balance)}</p>
-                                    </div>
-                                )}
-
-                                <div className="mt-3 flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                                    <Button
-                                        size="small"
-                                        type="text"
-                                        icon={<Pencil className="w-3.5 h-3.5" />}
-                                        onClick={() => {
-                                            setEditingAccount(account);
-                                            setAccountModalOpen(true);
-                                        }}
-                                    />
-                                    <Popconfirm
-                                        title="¿Eliminar cuenta?"
-                                        description="Se borran también sus gastos y mensualidades."
-                                        okText="Eliminar"
-                                        cancelText="Cancelar"
-                                        okButtonProps={{ danger: true }}
-                                        onConfirm={() => deleteAccount(account)}
-                                    >
-                                        <Button size="small" type="text" danger icon={<Trash2 className="w-3.5 h-3.5" />} />
-                                    </Popconfirm>
-                                </div>
+                                <CreditCardVisual
+                                    account={account}
+                                    onOpen={() => setStatementAccountId(account.id)}
+                                    onEdit={() => {
+                                        setEditingAccount(account);
+                                        setAccountModalOpen(true);
+                                    }}
+                                    onDelete={() => deleteAccount(account)}
+                                />
                             </motion.div>
                         ))}
                     </div>
