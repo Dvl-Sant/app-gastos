@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Alert, App as AntApp, Button, DatePicker, Skeleton, Statistic } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { motion } from 'framer-motion';
-import { CalendarClock, CreditCard, DollarSign, Lightbulb, Pencil, Plus, TrendingUp, User, Users } from 'lucide-react';
+import { CalendarClock, DollarSign, Lightbulb, Pencil, Plus, TrendingUp, User, Users } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
+import CreditCardVisual from '../components/CreditCardVisual';
+import SwipeCarousel from '../components/SwipeCarousel';
 import DuesTable from '../components/DuesTable';
 import ExpensesList from '../components/ExpensesList';
 import IncomesTable from '../components/IncomesTable';
@@ -16,12 +18,6 @@ import type { PaymentSourceInput } from '../hooks/useFetch';
 import { api, useFetch } from '../hooks/useFetch';
 import type { Due, Expense, Income } from '../types';
 import { formatCurrency } from '../utils/format';
-
-const typeBadge: Record<string, string> = {
-    credito: 'bg-purple-50 text-purple-600',
-    debito: 'bg-blue-50 text-blue-600',
-    efectivo: 'bg-green-50 text-green-600',
-};
 
 export default function DashboardPage() {
     const { message } = AntApp.useApp();
@@ -271,54 +267,18 @@ export default function DashboardPage() {
                             Gestionar
                         </Button>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {(accounts.data ?? []).map((account, i) => {
-                            const cycle = summary?.accounts.find((a) => a.id === account.id);
-                            return (
-                                <motion.button
-                                    key={account.id}
-                                    initial={{ opacity: 0, y: 12 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.1 + i * 0.05, duration: 0.3 }}
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    onClick={() => navigate('/accounts', { state: { openAccountId: account.id } })}
-                                    className="text-left bg-white rounded-xl border border-border-subtle shadow-sm p-4"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-bold text-slate-900 flex items-center gap-2">
-                                            <CreditCard className="w-4 h-4 text-primary" />
-                                            {account.name}
-                                        </span>
-                                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${typeBadge[account.type] ?? ''}`}>
-                                            {account.type}
-                                        </span>
-                                    </div>
-                                    {account.type === 'credito' ? (
-                                        <div className="mt-3 flex items-baseline justify-between">
-                                            <div>
-                                                <p className="text-[10px] text-slate-500 font-bold uppercase">Deuda total</p>
-                                                <p className="text-lg font-extrabold text-danger">{formatCurrency(cycle?.pending_debt ?? account.pending_debt ?? 0)}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-[10px] text-slate-500 font-bold uppercase">Este periodo</p>
-                                                <p className="text-sm font-bold text-slate-900">{formatCurrency(cycle?.cycle_pending ?? 0)}</p>
-                                                <p className="text-[10px] text-slate-400">
-                                                    Corte día {account.cut_off_day}
-                                                    {account.payment_due_day ? ` • Pago día ${account.payment_due_day}` : ''}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="mt-3">
-                                            <p className="text-[10px] text-slate-500 font-bold uppercase">Saldo</p>
-                                            <p className="text-lg font-extrabold text-success">{formatCurrency(account.balance)}</p>
-                                        </div>
-                                    )}
-                                </motion.button>
-                            );
-                        })}
-                    </div>
+                    <SwipeCarousel
+                        ariaLabel="Mis cuentas"
+                        items={(accounts.data ?? []).map((account) => ({
+                            key: account.id,
+                            content: (
+                                <CreditCardVisual
+                                    account={account}
+                                    onOpen={() => navigate('/accounts', { state: { openAccountId: account.id } })}
+                                />
+                            ),
+                        }))}
+                    />
                 </motion.section>
 
                 {/* Pagos compartidos */}
@@ -332,45 +292,48 @@ export default function DashboardPage() {
                                 Gestionar
                             </Button>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {(summary?.shared ?? []).map((group) => (
-                                <motion.button
-                                    key={group.id}
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    onClick={() => navigate('/shared')}
-                                    className="text-left bg-white rounded-xl border border-border-subtle shadow-sm p-4"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-bold text-slate-900 flex items-center gap-2">
-                                            <Users className="w-4 h-4 text-primary" />
-                                            {group.name}
-                                        </span>
-                                        <span
-                                            className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                                                group.pending.length === 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-                                            }`}
-                                        >
-                                            {group.paid_count}/{group.active_members} pagaron
-                                        </span>
-                                    </div>
-                                    {group.pending.length > 0 && (
-                                        <p className="mt-2 text-xs font-semibold text-danger">
-                                            Deben: {group.pending.map((p) => p.name).join(', ')}
+                        <SwipeCarousel
+                            ariaLabel="Pagos compartidos"
+                            items={(summary?.shared ?? []).map((group) => ({
+                                key: group.id,
+                                content: (
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => navigate('/shared')}
+                                        className="text-left bg-white rounded-xl border border-border-subtle shadow-sm p-4 w-full"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-bold text-slate-900 flex items-center gap-2">
+                                                <Users className="w-4 h-4 text-primary" />
+                                                {group.name}
+                                            </span>
+                                            <span
+                                                className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                                                    group.pending.length === 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+                                                }`}
+                                            >
+                                                {group.paid_count}/{group.active_members} pagaron
+                                            </span>
+                                        </div>
+                                        {group.pending.length > 0 && (
+                                            <p className="mt-2 text-xs font-semibold text-danger">
+                                                Deben: {group.pending.map((p) => p.name).join(', ')}
+                                            </p>
+                                        )}
+                                        {group.advance.length > 0 && (
+                                            <p className="mt-1 text-xs font-semibold text-blue-500">
+                                                Adelantados: {group.advance.map((a) => `${a.name} (hasta ${a.until})`).join(', ')}
+                                            </p>
+                                        )}
+                                        <p className="mt-2 text-[11px] text-slate-400">
+                                            Recibido: {formatCurrency(group.collected)}
+                                            {group.expected > 0 ? ` / ${formatCurrency(group.expected)}` : ''}
                                         </p>
-                                    )}
-                                    {group.advance.length > 0 && (
-                                        <p className="mt-1 text-xs font-semibold text-blue-500">
-                                            Adelantados: {group.advance.map((a) => `${a.name} (hasta ${a.until})`).join(', ')}
-                                        </p>
-                                    )}
-                                    <p className="mt-2 text-[11px] text-slate-400">
-                                        Recibido: {formatCurrency(group.collected)}
-                                        {group.expected > 0 ? ` / ${formatCurrency(group.expected)}` : ''}
-                                    </p>
-                                </motion.button>
-                            ))}
-                        </div>
+                                    </motion.button>
+                                ),
+                            }))}
+                        />
                     </motion.section>
                 )}
 

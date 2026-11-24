@@ -9,8 +9,8 @@ import { cardGradient } from '../utils/color';
 interface Props {
     account: Account;
     onOpen: () => void;
-    onEdit: () => void;
-    onDelete: () => void;
+    onEdit?: () => void;
+    onDelete?: () => void;
 }
 
 const DEFAULT_COLORS: Record<string, string> = {
@@ -49,23 +49,29 @@ export default function CreditCardVisual({ account, onOpen, onEdit, onDelete }: 
             </svg>
 
             {/* Acciones */}
-            <div className="absolute top-2 right-2 z-20 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                <button onClick={onEdit} className="text-white/70 hover:text-white p-1" title="Editar cuenta">
-                    <Pencil className="w-4 h-4" />
-                </button>
-                <Popconfirm
-                    title="¿Eliminar cuenta?"
-                    description="Se borran también sus gastos y mensualidades."
-                    okText="Eliminar"
-                    cancelText="Cancelar"
-                    okButtonProps={{ danger: true }}
-                    onConfirm={onDelete}
-                >
-                    <button className="text-white/70 hover:text-white p-1" title="Eliminar cuenta">
-                        <Trash2 className="w-4 h-4" />
-                    </button>
-                </Popconfirm>
-            </div>
+            {(onEdit || onDelete) && (
+                <div className="absolute top-2 right-2 z-20 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    {onEdit && (
+                        <button onClick={onEdit} className="text-white/70 hover:text-white p-1" title="Editar cuenta">
+                            <Pencil className="w-4 h-4" />
+                        </button>
+                    )}
+                    {onDelete && (
+                        <Popconfirm
+                            title="¿Eliminar cuenta?"
+                            description="Se borran también sus gastos y mensualidades."
+                            okText="Eliminar"
+                            cancelText="Cancelar"
+                            okButtonProps={{ danger: true }}
+                            onConfirm={onDelete}
+                        >
+                            <button className="text-white/70 hover:text-white p-1" title="Eliminar cuenta">
+                                <Trash2 className="w-4 h-4" />
+                            </button>
+                        </Popconfirm>
+                    )}
+                </div>
+            )}
 
             {/* Contenido */}
             <div className="relative z-10 h-full flex flex-col justify-between p-4">
