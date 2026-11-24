@@ -1,10 +1,26 @@
 import pool from '../db/pool';
-import { addMonths, monthWindow, toNum, todayISO } from '../utils/dates';
+import { addMonths, diffDays, monthWindow, nextCutDate, paymentDateForCut, toNum, todayISO } from '../utils/dates';
 import { Due } from '../models/Expense';
 import { ExpensesService } from './expenses.service';
 import { IncomesService } from './incomes.service';
 import { AccountsService } from './accounts.service';
 import { SharedService } from './shared.service';
+
+export interface CardTipEntry {
+    id: number;
+    name: string;
+    cut_off_day: number | null;
+    next_cut_date: string;
+    next_payment_date: string;
+    days_until_cut: number;
+    days_until_payment: number;
+}
+
+export interface CardTip {
+    best: CardTipEntry | null;
+    caution: CardTipEntry | null;
+    cards: CardTipEntry[];
+}
 
 export interface AccountCycleSummary {
     id: number;
@@ -84,6 +100,36 @@ export class DashboardService {
 
         const shared = await SharedService.getAlerts(userId);
 
+        // Tip financiero: la tarjeta con el corte más lejano da más días de
+        // financiamiento (lo que compres hoy entra al ciclo que cierra más
+        // tarde y pagarás más lejos); la de corte más cercano conviene evitarla.
+        let card_tip: CardTip | null = null;
+        const creditCards = accountRows.filter((a) => a.type === 'credito' && a.cut_off_day);
+        if (creditCards.length > 0) {
+            const cards: CardTipEntry[] = creditCards
+                .map((a) => {
+                    const cut = nextCutDate(reference, a.cut_off_day!);
+                    const pay = a.payment_due_day
+                        ? paymentDateForCut(cut, a.cut_off_day!, a.payment_due_day)
+                        : cut;
+                    return {
+                        id: a.id,
+                        name: a.name,
+                        cut_off_day: a.cut_off_day,
+                        next_cut_date: cut,
+                        next_payment_date: pay,
+                        days_until_cut: diffDays(reference, cut),
+                        days_until_payment: diffDays(reference, pay),
+                    };
+                })
+                .sort((x, y) => y.days_until_cut - x.days_until_cut);
+            card_tip = {
+                best: cards[0],
+                caution: cards.length > 1 ? cards[cards.length - 1] : null,
+                cards,
+            };
+        }
+
         return {
             savings,
             currency: 'USD',
@@ -98,6 +144,7 @@ export class DashboardService {
             accounts: accountSummaries,
             upcoming: upcoming as Due[],
             shared,
+            card_tip,
         };
     }
 }

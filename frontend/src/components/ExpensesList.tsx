@@ -45,6 +45,9 @@ export default function ExpensesList({ expenses, loading, onPay, onEdit, onDelet
             title: 'Monto',
             key: 'amount',
             align: 'right',
+            sorter: (a, b) =>
+                Number(a.expense_type === 'recurrente' ? a.monthly_payment : a.total_amount) -
+                Number(b.expense_type === 'recurrente' ? b.monthly_payment : b.total_amount),
             render: (_, expense) =>
                 expense.expense_type === 'recurrente' ? (
                     <span className="font-bold text-danger">{formatCurrency(expense.monthly_payment)}/mes</span>
@@ -64,6 +67,7 @@ export default function ExpensesList({ expenses, loading, onPay, onEdit, onDelet
             dataIndex: 'pending_amount',
             key: 'pending_amount',
             align: 'right',
+            sorter: (a, b) => Number(a.pending_amount ?? 0) - Number(b.pending_amount ?? 0),
             render: (value: string, expense) =>
                 expense.expense_type === 'unico' && expense.is_paid ? (
                     <span className="text-[10px] font-bold uppercase text-success">Pagado</span>
@@ -77,6 +81,8 @@ export default function ExpensesList({ expenses, loading, onPay, onEdit, onDelet
             key: 'next_due_date',
             align: 'right',
             width: 120,
+            sorter: (a, b) => (a.next_due_date ?? '9999-12-31').localeCompare(b.next_due_date ?? '9999-12-31'),
+            defaultSortOrder: 'ascend',
             render: (value: string | null) =>
                 value ? (
                     <span className="text-slate-600 text-xs font-semibold whitespace-nowrap">

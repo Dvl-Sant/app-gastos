@@ -89,3 +89,8 @@ export function monthWindow(reference: string): { from: string; to: string } {
 }
 
 export const toNum = (value: unknown): number => parseFloat(String(value ?? 0)) || 0;
+
+/** Días entre dos fechas 'YYYY-MM-DD' (positivo si to es posterior). */
+export function diffDays(from: string, to: string): number {
+    return Math.round((parseISO(to).getTime() - parseISO(from).getTime()) / 86400000);
+}

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Alert, App as AntApp, Button, DatePicker, Skeleton, Statistic } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { motion } from 'framer-motion';
-import { CalendarClock, CreditCard, DollarSign, Pencil, Plus, TrendingUp, User, Users } from 'lucide-react';
+import { CalendarClock, CreditCard, DollarSign, Lightbulb, Pencil, Plus, TrendingUp, User, Users } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import DuesTable from '../components/DuesTable';
 import ExpensesList from '../components/ExpensesList';
@@ -231,6 +231,37 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </motion.section>
+
+                {/* Tip financiero de tarjetas */}
+                {summary?.card_tip?.best && (
+                    <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.35, ease: 'easeOut' }}>
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-sm">
+                            <p className="text-xs font-bold uppercase tracking-wider text-amber-600 flex items-center gap-1 mb-2">
+                                <Lightbulb className="w-4 h-4" /> Tip financiero
+                            </p>
+                            <p className="text-sm text-slate-700">
+                                Usa <b className="text-primary">{summary.card_tip.best.name}</b> para tus compras:{' '}
+                                su corte cierra el{' '}
+                                <b>
+                                    {new Date(`${summary.card_tip.best.next_cut_date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                                </b>{' '}
+                                (en {summary.card_tip.best.days_until_cut} {summary.card_tip.best.days_until_cut === 1 ? 'día' : 'días'}), así que
+                                pagarías hasta el{' '}
+                                <b>
+                                    {new Date(`${summary.card_tip.best.next_payment_date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                                </b>
+                                .
+                            </p>
+                            {summary.card_tip.caution && (
+                                <p className="text-sm text-slate-700 mt-1">
+                                    ⚠️ Evita <b className="text-danger">{summary.card_tip.caution.name}</b> por ahora: su corte cierra en{' '}
+                                    {summary.card_tip.caution.days_until_cut} {summary.card_tip.caution.days_until_cut === 1 ? 'día' : 'días'} —
+                                    lo que gastes con ella tendrás que pagarlo muy pronto.
+                                </p>
+                            )}
+                        </div>
+                    </motion.section>
+                )}
 
                 {/* Cuentas / tarjetas */}
                 <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08, duration: 0.35, ease: 'easeOut' }}>

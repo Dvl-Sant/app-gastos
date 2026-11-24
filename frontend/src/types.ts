@@ -14,6 +14,11 @@ export interface Account {
     balance: string;
     color: string | null;
     pending_debt?: string;
+    next_cut_date?: string | null;
+    next_payment_date?: string | null;
+    days_until_cut?: number | null;
+    days_until_payment?: number | null;
+    created_at: string;
 }
 
 export interface AccountCycle {
@@ -110,6 +115,16 @@ export interface Cashflow {
     income_occurrences: IncomeOccurrence[];
 }
 
+export type CardTipEntry = {
+    id: number;
+    name: string;
+    cut_off_day: number | null;
+    next_cut_date: string;
+    next_payment_date: string;
+    days_until_cut: number;
+    days_until_payment: number;
+};
+
 export interface DashboardSummary {
     savings: number;
     currency: string;
@@ -124,6 +139,11 @@ export interface DashboardSummary {
     accounts: AccountCycle[];
     upcoming: Due[];
     shared: SharedAlert[];
+    card_tip: {
+        best: CardTipEntry | null;
+        caution: CardTipEntry | null;
+        cards: CardTipEntry[];
+    } | null;
 }
 
 export interface PaymentEntry {

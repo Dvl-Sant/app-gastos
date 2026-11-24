@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Alert, App as AntApp, Button, Drawer, Popconfirm, Skeleton, Statistic, Tag } from 'antd';
+import { Alert, App as AntApp, Button, Drawer, Popconfirm, Segmented, Skeleton, Statistic, Tag } from 'antd';
 import { motion } from 'framer-motion';
 import { CreditCard, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
@@ -36,6 +36,26 @@ export default function AccountsPage() {
     const savings = useFetch(api.savings.get);
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+    const [sortMode, setSortMode] = useState<'pago' | 'creacion'>('pago');
+
+    const sortedAccounts = useMemo(() => {
+        const list = [...(accounts.data ?? [])];
+        if (sortMode === 'pago') {
+            // El backend ya ordena crédito por fecha límite de pago; replicamos
+            // el criterio por si el toggle cambia o el orden llegase mezclado.
+            list.sort((a, b) => {
+                if (a.type === 'credito' && b.type === 'credito') {
+                    return (a.days_until_payment ?? 9999) - (b.days_until_payment ?? 9999);
+                }
+                if (a.type === 'credito') return -1;
+                if (b.type === 'credito') return 1;
+                return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            });
+        } else {
+            list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        }
+        return list;
+    }, [accounts.data, sortMode]);
 
     // Abrir el drawer si se llegó desde el dashboard (state.openAccountId)
     useEffect(() => {
@@ -162,26 +182,36 @@ export default function AccountsPage() {
             <main className="flex-1 px-4 py-6 space-y-6 max-w-5xl w-full mx-auto">
                 {accounts.error && <Alert type="error" showIcon message={accounts.error} />}
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                     <h3 className="text-lg font-bold text-slate-800">Todas mis cuentas</h3>
-                    <Button
-                        type="primary"
-                        icon={<Plus className="w-4 h-4" />}
-                        onClick={() => {
-                            setEditingAccount(null);
-                            setAccountModalOpen(true);
-                        }}
-                        className="!rounded-full !font-bold"
-                    >
-                        Nueva Cuenta
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <Segmented
+                            value={sortMode}
+                            onChange={(v) => setSortMode(v as 'pago' | 'creacion')}
+                            options={[
+                                { label: 'Por fecha de pago', value: 'pago' },
+                                { label: 'Como las agregué', value: 'creacion' },
+                            ]}
+                        />
+                        <Button
+                            type="primary"
+                            icon={<Plus className="w-4 h-4" />}
+                            onClick={() => {
+                                setEditingAccount(null);
+                                setAccountModalOpen(true);
+                            }}
+                            className="!rounded-full !font-bold"
+                        >
+                            Nueva Cuenta
+                        </Button>
+                    </div>
                 </div>
 
                 {accounts.loading ? (
                     <Skeleton active paragraph={{ rows: 4 }} />
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {(accounts.data ?? []).map((account, i) => (
+                        {sortedAccounts.map((account, i) => (
                             <motion.div
                                 key={account.id}
                                 initial={{ opacity: 0, y: 12 }}
@@ -207,10 +237,20 @@ export default function AccountsPage() {
                                             <p className="text-[10px] text-slate-500 font-bold uppercase">Deuda pendiente total</p>
                                             <p className="text-xl font-extrabold text-danger">{formatCurrency(account.pending_debt ?? 0)}</p>
                                         </div>
-                                        <p className="text-[11px] text-slate-400 mt-2 font-semibold">
-                                            Corte día {account.cut_off_day}
-                                            {account.payment_due_day ? ` • Pago límite día ${account.payment_due_day}` : ''}
-                                        </p>
+                                        <div className="mt-2 flex items-center justify-between gap-2">
+                                            <p className="text-[11px] text-slate-400 font-semibold">
+                                                Corte día {account.cut_off_day}
+                                                {account.payment_due_day ? ` • Pago límite día ${account.payment_due_day}` : ''}
+                                            </p>
+                                            {account.next_payment_date && typeof account.days_until_payment === 'number' && (
+                                                <Tag
+                                                    color={account.days_until_payment <= 5 ? 'red' : 'green'}
+                                                    className="!m-0 !text-[10px] !font-bold whitespace-nowrap"
+                                                >
+                                                    Paga: {new Date(`${account.next_payment_date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} (en {account.days_until_payment}d)
+                                                </Tag>
+                                            )}
+                                        </div>
                                     </>
                                 ) : (
                                     <div className="mt-3">

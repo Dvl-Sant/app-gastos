@@ -12,6 +12,10 @@ export interface Account {
     created_at: Date;
     // Computados
     pending_debt?: string;
+    next_cut_date?: string | null;
+    next_payment_date?: string | null;
+    days_until_cut?: number | null;
+    days_until_payment?: number | null;
 }
 
 export type CreateAccountDTO = Omit<Account, 'id' | 'user_id' | 'created_at' | 'pending_debt'>;

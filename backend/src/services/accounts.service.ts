@@ -1,6 +1,6 @@
 import pool, { getClient } from '../db/pool';
 import { HttpError } from '../utils/errors';
-import { cycleWindow, monthWindow, nextCutDate, todayISO, toNum } from '../utils/dates';
+import { cycleWindow, diffDays, monthWindow, nextCutDate, paymentDateForCut, todayISO, toNum } from '../utils/dates';
 import { Account, CreateAccountDTO, UpdateAccountDTO } from '../models/Account';
 import { Due } from '../models/Expense';
 import type { PaymentSource } from '../models/Payment';
@@ -13,10 +13,43 @@ const ACCOUNT_SELECT = `
     FROM accounts a
 `;
 
+/** Calcula próximo corte / fecha límite de pago y días restantes de una tarjeta. */
+function enrichCreditCard(account: Account, reference: string): Account {
+    if (account.type !== 'credito' || !account.cut_off_day) {
+        return { ...account, next_cut_date: null, next_payment_date: null, days_until_cut: null, days_until_payment: null };
+    }
+    const cut = nextCutDate(reference, account.cut_off_day);
+    const pay = account.payment_due_day
+        ? paymentDateForCut(cut, account.cut_off_day, account.payment_due_day)
+        : cut;
+    return {
+        ...account,
+        next_cut_date: cut,
+        next_payment_date: pay,
+        days_until_cut: diffDays(reference, cut),
+        days_until_payment: diffDays(reference, pay),
+    };
+}
+
 export class AccountsService {
+    /**
+     * Cuentas del usuario listas para renderizar: las tarjetas de crédito
+     * primero, ordenadas por su fecha límite de pago más cercana; después
+     * efectivo/débito. Cada tarjeta trae su próximo corte y días restantes.
+     */
     static async list(userId: number): Promise<Account[]> {
+        const reference = todayISO();
         const { rows } = await pool.query(`${ACCOUNT_SELECT} WHERE a.user_id = $1 ORDER BY a.created_at ASC`, [userId]);
-        return rows;
+        const enriched = rows.map((a) => enrichCreditCard(a, reference));
+        enriched.sort((a, b) => {
+            if (a.type === 'credito' && b.type === 'credito') {
+                return (a.days_until_payment ?? 9999) - (b.days_until_payment ?? 9999);
+            }
+            if (a.type === 'credito') return -1;
+            if (b.type === 'credito') return 1;
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        });
+        return enriched;
     }
 
     static async getById(id: number, userId: number): Promise<Account | null> {
