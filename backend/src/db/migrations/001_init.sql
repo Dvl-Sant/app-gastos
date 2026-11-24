@@ -1,11 +1,11 @@
 -- ============================================
--- AppGastos Schema v2 (clean slate)
+-- AppGastos Schema v2 (clean slate) — idempotente
 -- Modelo: cuentas/tarjetas, gastos (recurrente/unico/msi),
 -- mensualidades materializadas (dues), ingresos (frecuente/unico),
 -- pagos flexibles y ahorros como concepto separado.
 -- ============================================
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE users (
 );
 
 -- Ahorros: concepto separado de las cuentas de gasto/giro
-CREATE TABLE user_savings (
+CREATE TABLE IF NOT EXISTS user_savings (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     total_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -23,7 +23,7 @@ CREATE TABLE user_savings (
 
 -- Cuentas y tarjetas. Las de crédito llevan día de corte y día límite de pago;
 -- su deuda es derivada (sumatoria de mensualidades no pagadas).
-CREATE TABLE accounts (
+CREATE TABLE IF NOT EXISTS accounts (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE accounts (
 --  - recurrente: cargo cada mes el día due_day (suscripciones, rentas)
 --  - unico: gasto de una sola vez; en tarjeta se difiere al corte
 --  - msi: diferido a N mensualidades que vencen el día de corte de la tarjeta
-CREATE TABLE expenses (
+CREATE TABLE IF NOT EXISTS expenses (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
@@ -60,7 +60,7 @@ CREATE TABLE expenses (
 -- curso+siguientes (recurrentes, se extienden perezosamente con ensureRecurringDues).
 -- due_date = fecha límite de pago; cut_date = ciclo de corte al que pertenece
 -- (solo cuentas de crédito; NULL en efectivo/débito).
-CREATE TABLE dues (
+CREATE TABLE IF NOT EXISTS dues (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     expense_id INTEGER NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
@@ -75,7 +75,7 @@ CREATE TABLE dues (
 );
 
 -- Ingresos: frecuentes (se proyectan en el calendario) o únicos (con fecha real)
-CREATE TABLE incomes (
+CREATE TABLE IF NOT EXISTS incomes (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
@@ -94,7 +94,7 @@ CREATE TABLE incomes (
 
 -- Pagos: contra una mensualidad o contra el estado de cuenta completo/parcial.
 -- El dinero sale de source_account_id (efectivo/débito).
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
@@ -105,12 +105,12 @@ CREATE TABLE payments (
     paid_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_accounts_user ON accounts(user_id);
-CREATE INDEX idx_expenses_user ON expenses(user_id);
-CREATE INDEX idx_expenses_account ON expenses(account_id);
-CREATE INDEX idx_dues_user_date ON dues(user_id, due_date);
-CREATE INDEX idx_dues_expense ON dues(expense_id);
-CREATE INDEX idx_dues_account_date ON dues(account_id, due_date);
-CREATE INDEX idx_dues_account_cut ON dues(account_id, cut_date);
-CREATE INDEX idx_incomes_user ON incomes(user_id);
-CREATE INDEX idx_payments_user ON payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_user ON expenses(user_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_account ON expenses(account_id);
+CREATE INDEX IF NOT EXISTS idx_dues_user_date ON dues(user_id, due_date);
+CREATE INDEX IF NOT EXISTS idx_dues_expense ON dues(expense_id);
+CREATE INDEX IF NOT EXISTS idx_dues_account_date ON dues(account_id, due_date);
+CREATE INDEX IF NOT EXISTS idx_dues_account_cut ON dues(account_id, cut_date);
+CREATE INDEX IF NOT EXISTS idx_incomes_user ON incomes(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id);

@@ -33,6 +33,7 @@ export default function AccountsPage() {
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     const [expenseModalOpen, setExpenseModalOpen] = useState(false);
     const [sortMode, setSortMode] = useState<'pago' | 'creacion'>('pago');
+    const categories = useFetch(api.expenseCategories.list);
 
     const sortedAccounts = useMemo(() => {
         const list = [...(accounts.data ?? [])];
@@ -304,6 +305,8 @@ export default function AccountsPage() {
             <ExpenseModal
                 open={expenseModalOpen}
                 accounts={accounts.data ?? []}
+                categories={categories.data ?? []}
+                onCategoriesChanged={categories.reload}
                 editing={editingExpense}
                 onCancel={() => {
                     setExpenseModalOpen(false);

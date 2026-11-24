@@ -1,5 +1,6 @@
 import pool from '../db/pool';
 import { User } from '../models/User';
+import { ExpenseCategoriesService } from './expense-categories.service';
 
 export class AuthService {
     static async getUserByUsername(username: string): Promise<User | null> {
@@ -28,6 +29,10 @@ export class AuthService {
                 "INSERT INTO accounts (user_id, name, type, balance) VALUES ($1, 'Efectivo', 'efectivo', 0)",
                 [newUser.id]
             );
+
+            // Categorías de gastos por defecto (misma transacción: el usuario
+            // aún no es visible para otras conexiones)
+            await ExpenseCategoriesService.seedDefaults(newUser.id, client);
 
             await client.query('COMMIT');
             return newUser;

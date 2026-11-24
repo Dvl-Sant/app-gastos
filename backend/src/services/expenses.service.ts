@@ -4,6 +4,7 @@ import { HttpError } from '../utils/errors';
 import { addMonths, nextCutDate, paymentDateForCut, toNum, todayISO } from '../utils/dates';
 import { CreateExpenseDTO, Due, Expense, UpdateExpenseDTO } from '../models/Expense';
 import type { PaymentSource } from '../models/Payment';
+import { ExpenseCategoriesService } from './expense-categories.service';
 
 /** Meses de mensualidades recurrentes generados por adelantado. */
 const RECURRENT_HORIZON_MONTHS = 12;
@@ -46,6 +47,7 @@ export class ExpensesService {
     static async create(userId: number, data: CreateExpenseDTO): Promise<Expense> {
         const type = data.expense_type ?? 'recurrente';
         if (!data.name) throw new HttpError(400, 'El nombre del gasto es requerido');
+        if (data.category) await ExpenseCategoriesService.ensureExists(userId, data.category);
 
         const client = await getClient();
         try {
@@ -326,6 +328,9 @@ export class ExpensesService {
      * intactas junto con su historial.
      */
     static async update(id: number, userId: number, data: UpdateExpenseDTO): Promise<Expense | null> {
+        if (data.category !== undefined && data.category !== null && data.category !== '') {
+            await ExpenseCategoriesService.ensureExists(userId, data.category);
+        }
         const client = await getClient();
         try {
             await client.query('BEGIN');

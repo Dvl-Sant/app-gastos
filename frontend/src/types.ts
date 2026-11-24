@@ -36,6 +36,12 @@ export interface AccountCycle {
 export type ExpenseType = 'recurrente' | 'unico' | 'msi';
 
 // pg serializa DECIMAL como string
+export interface ExpenseCategory {
+    id: number;
+    name: string;
+    usage_count?: number;
+}
+
 export interface Expense {
     id: number;
     user_id: number;

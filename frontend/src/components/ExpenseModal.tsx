@@ -1,16 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DatePicker, Form, Input, InputNumber, Modal, Segmented, Select } from 'antd';
+import { Button, DatePicker, Form, Input, InputNumber, Modal, Segmented, Select } from 'antd';
+import { Plus } from 'lucide-react';
 import dayjs, { type Dayjs } from 'dayjs';
-import type { Account, Expense, ExpenseType } from '../types';
-
-const CATEGORIES = [
-    'Vivienda y Servicios',
-    'Transporte',
-    'Comida',
-    'Entretenimiento',
-    'Pago de Deudas',
-    'Otro',
-];
+import type { Account, Expense, ExpenseCategory, ExpenseType } from '../types';
+import CategoryManagerModal from './CategoryManagerModal';
 
 export interface ExpenseFormValues {
     account_id: number;
@@ -27,6 +20,8 @@ export interface ExpenseFormValues {
 interface Props {
     open: boolean;
     accounts: Account[];
+    categories: ExpenseCategory[];
+    onCategoriesChanged: () => Promise<void>;
     editing: Expense | null;
     onCancel: () => void;
     onSubmit: (payload: Record<string, unknown>, editingId: number | null) => Promise<void>;
@@ -38,11 +33,12 @@ const typeLabels: Record<ExpenseType, string> = {
     msi: 'A meses (MSI)',
 };
 
-export default function ExpenseModal({ open, accounts, editing, onCancel, onSubmit }: Props) {
+export default function ExpenseModal({ open, accounts, categories, onCategoriesChanged, editing, onCancel, onSubmit }: Props) {
     const [form] = Form.useForm<ExpenseFormValues>();
     const [type, setType] = useState<ExpenseType>('recurrente');
     const [saving, setSaving] = useState(false);
     const [accountId, setAccountId] = useState<number | undefined>();
+    const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
 
     const selectedAccount = useMemo(
         () => accounts.find((a) => a.id === accountId),
@@ -210,8 +206,25 @@ export default function ExpenseModal({ open, accounts, editing, onCancel, onSubm
                     name="category"
                     label="Categoría"
                     rules={[{ required: true, message: 'Selecciona una categoría' }]}
+                    extra={
+                        <Button
+                            type="link"
+                            size="small"
+                            icon={<Plus className="w-3 h-3" />}
+                            className="!px-0 !h-auto"
+                            onClick={() => setCategoryManagerOpen(true)}
+                        >
+                            Administrar categorías
+                        </Button>
+                    }
                 >
-                    <Select options={CATEGORIES.map((c) => ({ value: c, label: c }))} placeholder="Selecciona" />
+                    <Select
+                        showSearch
+                        optionFilterProp="label"
+                        placeholder="Selecciona"
+                        options={categories.map((c) => ({ value: c.name, label: c.name }))}
+                        notFoundContent="No hay categorías: crea una con «Administrar categorías»."
+                    />
                 </Form.Item>
 
                 {type === 'unico' && selectedAccount?.type === 'credito' && (
@@ -229,6 +242,12 @@ export default function ExpenseModal({ open, accounts, editing, onCancel, onSubm
                     </p>
                 )}
             </Form>
+            <CategoryManagerModal
+                open={categoryManagerOpen}
+                categories={categories}
+                onChanged={onCategoriesChanged}
+                onClose={() => setCategoryManagerOpen(false)}
+            />
         </Modal>
     );
 }

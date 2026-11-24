@@ -1,9 +1,9 @@
 -- ============================================
--- Migration 004: movimientos de ahorros
+-- Migration 004: movimientos de ahorros (idempotente)
 -- Registra traspasos de cuentas (efectivo/débito) hacia los ahorros.
 -- ============================================
 
-CREATE TABLE savings_movements (
+CREATE TABLE IF NOT EXISTS savings_movements (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     amount DECIMAL(12,2) NOT NULL,
@@ -13,4 +13,4 @@ CREATE TABLE savings_movements (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_savings_movements_user ON savings_movements(user_id);
+CREATE INDEX IF NOT EXISTS idx_savings_movements_user ON savings_movements(user_id);

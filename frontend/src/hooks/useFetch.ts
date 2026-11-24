@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type DependencyList } from 'react';
 import { apiFetch } from '../api/client';
-import type { Account, Cashflow, Due, Expense, HistoryResponse, Income, Statement } from '../types';
+import type { Account, Cashflow, Due, Expense, ExpenseCategory, HistoryResponse, Income, Statement } from '../types';
 
 interface UseFetchResult<T> {
     data: T | null;
@@ -62,6 +62,14 @@ export const api = {
         update: (id: number, body: unknown) =>
             apiFetch<Expense>(`/expenses/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
         remove: (id: number) => apiFetch<void>(`/expenses/${id}`, { method: 'DELETE' }),
+    },
+    expenseCategories: {
+        list: () => apiFetch<ExpenseCategory[]>('/expense-categories'),
+        create: (name: string) =>
+            apiFetch<ExpenseCategory>('/expense-categories', { method: 'POST', body: JSON.stringify({ name }) }),
+        update: (id: number, name: string) =>
+            apiFetch<ExpenseCategory>(`/expense-categories/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+        remove: (id: number) => apiFetch<void>(`/expense-categories/${id}`, { method: 'DELETE' }),
     },
     dues: {
         pay: (id: number, body: { amount?: number } & PaymentSourceInput) =>

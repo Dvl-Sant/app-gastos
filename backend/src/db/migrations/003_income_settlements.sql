@@ -1,10 +1,10 @@
 -- ============================================
--- Migration 003: liquidación automática de ingresos
+-- Migration 003: liquidación automática de ingresos (idempotente)
 -- Registra qué ocurrencias de ingresos ya se acreditaron a la cuenta
 -- de efectivo, para que al pasar su fecha se sumen una sola vez.
 -- ============================================
 
-CREATE TABLE income_settlements (
+CREATE TABLE IF NOT EXISTS income_settlements (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     income_id INTEGER NOT NULL REFERENCES incomes(id) ON DELETE CASCADE,
@@ -14,4 +14,4 @@ CREATE TABLE income_settlements (
     UNIQUE (income_id, settled_date)
 );
 
-CREATE INDEX idx_income_settlements_user ON income_settlements(user_id);
+CREATE INDEX IF NOT EXISTS idx_income_settlements_user ON income_settlements(user_id);

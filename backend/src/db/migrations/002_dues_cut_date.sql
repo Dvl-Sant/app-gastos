@@ -1,5 +1,5 @@
 -- ============================================
--- Migration 002: cut_date en dues
+-- Migration 002: cut_date en dues (idempotente)
 -- Las mensualidades de tarjetas de crédito vencen en la fecha límite de
 -- pago; cut_date guarda el ciclo de corte al que pertenecen para que el
 -- estado de cuenta siga agrupando por corte.

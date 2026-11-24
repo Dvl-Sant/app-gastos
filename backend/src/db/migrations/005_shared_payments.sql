@@ -1,11 +1,11 @@
 -- ============================================
--- Migration 005: gastos compartidos (suscripciones familiares)
+-- Migration 005: gastos compartidos (idempotente)
 -- Grupos periódicos donde el usuario paga y los miembros le reembolsan
 -- su parte, mensual o varios meses por adelantado.
 -- period = 'YYYY-MM' (un registro por miembro y mes cubierto).
 -- ============================================
 
-CREATE TABLE shared_groups (
+CREATE TABLE IF NOT EXISTS shared_groups (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE shared_groups (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE shared_members (
+CREATE TABLE IF NOT EXISTS shared_members (
     id SERIAL PRIMARY KEY,
     group_id INTEGER NOT NULL REFERENCES shared_groups(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -26,7 +26,7 @@ CREATE TABLE shared_members (
     UNIQUE (group_id, name)
 );
 
-CREATE TABLE shared_payments (
+CREATE TABLE IF NOT EXISTS shared_payments (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     group_id INTEGER NOT NULL REFERENCES shared_groups(id) ON DELETE CASCADE,
@@ -38,7 +38,7 @@ CREATE TABLE shared_payments (
     UNIQUE (member_id, period)
 );
 
-CREATE INDEX idx_shared_groups_user ON shared_groups(user_id);
-CREATE INDEX idx_shared_members_group ON shared_members(group_id);
-CREATE INDEX idx_shared_payments_member ON shared_payments(member_id);
-CREATE INDEX idx_shared_payments_group_period ON shared_payments(group_id, period);
+CREATE INDEX IF NOT EXISTS idx_shared_groups_user ON shared_groups(user_id);
+CREATE INDEX IF NOT EXISTS idx_shared_members_group ON shared_members(group_id);
+CREATE INDEX IF NOT EXISTS idx_shared_payments_member ON shared_payments(member_id);
+CREATE INDEX IF NOT EXISTS idx_shared_payments_group_period ON shared_payments(group_id, period);

@@ -38,6 +38,7 @@ export default function DashboardPage() {
     const [viewMonth, setViewMonth] = useState<Dayjs>(dayjs());
 
     const expensesList = useFetch(api.expenses.list);
+    const categories = useFetch(api.expenseCategories.list);
 
     const monthDues = useFetch(
         () =>
@@ -55,6 +56,11 @@ export default function DashboardPage() {
         void savings.reload();
         void monthDues.reload();
         void expensesList.reload();
+    };
+
+    const refreshCategories = async () => {
+        await categories.reload();
+        await expensesList.reload();
     };
 
     const handleError = (e: unknown) => message.error(e instanceof Error ? e.message : 'Error inesperado');
@@ -437,6 +443,8 @@ export default function DashboardPage() {
             <ExpenseModal
                 open={expenseModalOpen}
                 accounts={accounts.data ?? []}
+                categories={categories.data ?? []}
+                onCategoriesChanged={refreshCategories}
                 editing={editingExpense}
                 onCancel={() => {
                     setExpenseModalOpen(false);
