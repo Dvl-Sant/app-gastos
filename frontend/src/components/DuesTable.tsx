@@ -138,6 +138,7 @@ export default function DuesTable({ dues, loading, showAccount, onPay, onEditExp
             loading={loading}
             pagination={false}
             size="middle"
+            scroll={{ x: 'max-content' }}
             footer={footer ? () => footer : undefined}
             locale={{ emptyText: emptyText ?? 'No hay vencimientos en este periodo.' }}
         />

@@ -136,6 +136,7 @@ export default function ExpensesList({ expenses, loading, onPay, onEdit, onDelet
             loading={loading}
             pagination={false}
             size="middle"
+            scroll={{ x: 'max-content' }}
             locale={{ emptyText: 'No hay gastos declarados todavía.' }}
         />
     );

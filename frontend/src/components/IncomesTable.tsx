@@ -95,6 +95,7 @@ export default function IncomesTable({ incomes, onEdit, onDelete }: Props) {
             dataSource={incomes}
             pagination={false}
             size="middle"
+            scroll={{ x: 'max-content' }}
             locale={{ emptyText: 'No hay ingresos registrados.' }}
         />
     );
