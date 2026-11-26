@@ -1,14 +1,29 @@
 import pool, { getClient } from '../db/pool';
 import { HttpError } from '../utils/errors';
-import { toNum, todayISO } from '../utils/dates';
+import { addDays, addMonths, diffDays, toNum, todayISO } from '../utils/dates';
 import { Loan, LoanPayment } from '../models/Loan';
 
 export interface LoanWithStatus extends Loan {
     payments: { id: number; amount: string; account_name: string | null; paid_at: Date; note: string | null }[];
 }
 
+const FREQS = ['semanal', 'quincenal', 'mensual'] as const;
+type Frequency = (typeof FREQS)[number];
+
+/** Próximo abono esperado según frecuencia: último abono (o préstamo) + intervalo. */
+function nextExpected(loan: {
+    loan_date: string;
+    payment_frequency: Frequency | null;
+}, lastPaymentDate: string | null): { date: string | null; days: number | null } {
+    if (!loan.payment_frequency) return { date: null, days: null };
+    const base = lastPaymentDate ?? loan.loan_date;
+    const step = loan.payment_frequency === 'semanal' ? 7 : loan.payment_frequency === 'quincenal' ? 15 : 0;
+    const next = step > 0 ? addDays(base, step) : addMonths(base, 1);
+    return { date: next, days: diffDays(todayISO(), next) };
+}
+
 export class LoansService {
-    /** Lista con estado (abonado/pendiente) y pagos por préstamo. */
+    /** Lista con estado (abonado/pendiente), próximo abono esperado y pagos. */
     static async list(userId: number): Promise<LoanWithStatus[]> {
         const { rows: loans } = await pool.query(
             `SELECT l.*, a.name AS account_name,
@@ -38,12 +53,21 @@ export class LoansService {
                     paid_at: p.paid_at,
                     note: p.note,
                 }));
+            const lastPaid = loanPayments.length
+                ? loanPayments
+                      .map((p) => new Date(p.paid_at).toISOString().slice(0, 10))
+                      .sort()
+                      .slice(-1)[0]
+                : null;
+            const { date: nextDate, days: nextDays } = nextExpected(l, lastPaid);
             return {
                 ...l,
                 loan_date: typeof l.loan_date === 'string' ? l.loan_date : String(l.loan_date).slice(0, 10),
                 paid_amount: paid,
                 remaining: Math.round(remaining * 100) / 100,
                 status: remaining <= 0 ? 'liquidado' : 'activo',
+                next_expected_date: remaining <= 0 ? null : nextDate,
+                days_until_next: remaining <= 0 ? null : nextDays,
                 payments: loanPayments,
             } as LoanWithStatus;
         });
@@ -62,6 +86,7 @@ export class LoansService {
             account_id?: number | null;
             loan_date?: string;
             comments?: string;
+            payment_frequency?: Frequency | null;
         }
     ): Promise<LoanWithStatus> {
         const person = data.person_name?.trim();
@@ -71,6 +96,10 @@ export class LoansService {
         const amount = toNum(data.amount);
         if (amount <= 0) throw new HttpError(400, 'El monto del préstamo debe ser mayor a 0');
         const loanDate = data.loan_date || todayISO();
+        const frequency =
+            data.payment_frequency && (FREQS as readonly string[]).includes(data.payment_frequency)
+                ? (data.payment_frequency as Frequency)
+                : null;
 
         const client = await getClient();
         try {
@@ -87,9 +116,9 @@ export class LoansService {
             }
 
             const { rows } = await client.query(
-                `INSERT INTO loans (user_id, person_name, concept, amount, account_id, loan_date, comments)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-                [userId, person, concept, amount, accountId, loanDate, data.comments ?? null]
+                `INSERT INTO loans (user_id, person_name, concept, amount, account_id, loan_date, comments, payment_frequency)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+                [userId, person, concept, amount, accountId, loanDate, data.comments ?? null, frequency]
             );
 
             await client.query('COMMIT');
@@ -156,6 +185,77 @@ export class LoansService {
 
             await client.query('COMMIT');
             return { payment: paymentRows[0], remaining: Math.round((remaining - amount) * 100) / 100 };
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
+    /**
+     * Edita un abono ya registrado (por captura errónea): ajusta monto,
+     * fecha y nota, corrigiendo el saldo de la cuenta de destino.
+     */
+    static async updatePayment(
+        userId: number,
+        paymentId: number,
+        data: { amount?: number; account_id?: number | null; paid_at?: string; note?: string }
+    ): Promise<{ amount: number }> {
+        const client = await getClient();
+        try {
+            await client.query('BEGIN');
+            const { rows } = await client.query(
+                `SELECT lp.*, l.amount AS loan_amount
+                 FROM loan_payments lp JOIN loans l ON l.id = lp.loan_id
+                 WHERE lp.id = $1 AND lp.user_id = $2 FOR UPDATE`,
+                [paymentId, userId]
+            );
+            const payment = rows[0];
+            if (!payment) throw new HttpError(404, 'Abono no encontrado');
+
+            const newAmount = data.amount !== undefined ? toNum(data.amount) : toNum(payment.amount);
+            if (newAmount <= 0) throw new HttpError(400, 'El abono debe ser mayor a 0');
+
+            // Total del préstamo con este abono corregido no puede exceder el monto prestado
+            const { rows: totals } = await client.query(
+                'SELECT COALESCE(SUM(amount), 0) AS paid FROM loan_payments WHERE loan_id = $1 AND id <> $2',
+                [payment.loan_id, paymentId]
+            );
+            if (toNum(totals[0].paid) + newAmount > toNum(payment.loan_amount) + 0.001) {
+                throw new HttpError(400, 'La suma de abonos no puede exceder el monto del préstamo');
+            }
+
+            const delta = newAmount - toNum(payment.amount);
+            let accountId = data.account_id !== undefined ? data.account_id : payment.account_id;
+
+            if (delta !== 0 || (data.account_id !== undefined && data.account_id !== payment.account_id)) {
+                // Revierte el efecto anterior en la cuenta original
+                if (payment.account_id) {
+                    await client.query('UPDATE accounts SET balance = balance - $1::numeric WHERE id = $2', [
+                        toNum(payment.amount),
+                        payment.account_id,
+                    ]);
+                }
+                if (accountId) {
+                    const { rows: targetRows } = await client.query(
+                        "SELECT id FROM accounts WHERE id = $1 AND user_id = $2 AND type IN ('efectivo','debito')",
+                        [accountId, userId]
+                    );
+                    if (!targetRows[0]) throw new HttpError(400, 'El abono solo puede entrar a efectivo o débito');
+                    await client.query('UPDATE accounts SET balance = balance + $1::numeric WHERE id = $2', [newAmount, accountId]);
+                }
+            }
+
+            await client.query(
+                `UPDATE loan_payments
+                 SET amount = $1, account_id = $2, note = $3, paid_at = COALESCE($4::timestamptz, paid_at)
+                 WHERE id = $5`,
+                [newAmount, accountId, data.note !== undefined ? data.note : payment.note, data.paid_at ?? null, paymentId]
+            );
+
+            await client.query('COMMIT');
+            return { amount: newAmount };
         } catch (error) {
             await client.query('ROLLBACK');
             throw error;

@@ -4,22 +4,32 @@ import dayjs, { type Dayjs } from 'dayjs';
 import type { Account } from '../types';
 import { formatCurrency } from '../utils/format';
 
+export interface LoanFormValues {
+    person_name: string;
+    concept: string;
+    amount: number;
+    account_id?: number;
+    loan_date?: Dayjs;
+    payment_frequency?: string;
+    comments?: string;
+}
+
 interface Props {
     open: boolean;
     accounts: Account[];
     onCancel: () => void;
-    onSubmit: (values: { person_name: string; concept: string; amount: number; account_id?: number | null; loan_date?: string; comments?: string }) => Promise<void>;
+    onSubmit: (values: { person_name: string; concept: string; amount: number; account_id?: number | null; loan_date?: string; comments?: string; payment_frequency?: string | null }) => Promise<void>;
 }
 
-/** Crear préstamo: persona, concepto, monto, cuenta de salida, fecha y notas. */
+/** Crear préstamo: persona, concepto, monto, cuenta de salida, fecha, frecuencia de abonos y notas. */
 export default function LoanModal({ open, accounts, onCancel, onSubmit }: Props) {
-    const [form] = Form.useForm<{ person_name: string; concept: string; amount: number; account_id?: number; loan_date?: Dayjs; comments?: string }>();
+    const [form] = Form.useForm<{ person_name: string; concept: string; amount: number; account_id?: number; loan_date?: Dayjs; payment_frequency?: string; comments?: string }>();
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (!open) return;
         form.resetFields();
-        form.setFieldsValue({ loan_date: dayjs(), account_id: undefined });
+        form.setFieldsValue({ loan_date: dayjs(), account_id: undefined, payment_frequency: undefined });
     }, [open, form]);
 
     const handleOk = async () => {
@@ -34,6 +44,7 @@ export default function LoanModal({ open, accounts, onCancel, onSubmit }: Props)
                     account_id: values.account_id ?? null,
                     loan_date: values.loan_date ? values.loan_date.format('YYYY-MM-DD') : undefined,
                     comments: values.comments,
+                    payment_frequency: values.payment_frequency ?? null,
                 },
             );
         } finally {
@@ -96,6 +107,21 @@ export default function LoanModal({ open, accounts, onCancel, onSubmit }: Props)
                             value: a.id,
                             label: `${a.name} (${a.type === 'credito' ? 'crédito' : a.type === 'debito' ? 'débito' : 'efectivo'}) — saldo ${formatCurrency(a.balance)}`,
                         }))}
+                    />
+                </Form.Item>
+                <Form.Item
+                    name="payment_frequency"
+                    label="Abonos periódicos (opcional)"
+                    extra="Con indicador de cuántos días faltan para cobrar"
+                >
+                    <Select
+                        allowClear
+                        placeholder="Sin periodo fijo"
+                        options={[
+                            { value: 'semanal', label: 'Semanal (cada 7 días)' },
+                            { value: 'quincenal', label: 'Quincenal (cada 15 días)' },
+                            { value: 'mensual', label: 'Mensual' },
+                        ]}
                     />
                 </Form.Item>
                 <Form.Item name="comments" label="Comentarios (opcional)">

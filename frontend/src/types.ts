@@ -232,10 +232,13 @@ export interface Loan {
     account_id: number | null;
     loan_date: string;
     comments: string | null;
+    payment_frequency: 'semanal' | 'quincenal' | 'mensual' | null;
     account_name?: string | null;
     paid_amount?: string;
     remaining?: string;
     status?: 'activo' | 'liquidado';
+    next_expected_date?: string | null;
+    days_until_next?: number | null;
     payments?: LoanPaymentEntry[];
 }
 

@@ -123,8 +123,10 @@ export const api = {
         update: (id: number, body: { person_name?: string; concept?: string; comments?: string }) =>
             apiFetch<unknown>(`/loans/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
         remove: (id: number) => apiFetch<void>(`/loans/${id}`, { method: 'DELETE' }),
-        pay: (id: number, body: { amount: number; account_id?: number | null; note?: string }) =>
+        pay: (id: number, body: { amount: number; account_id?: number | null; note?: string; paid_at?: string }) =>
             apiFetch<{ remaining: number }>(`/loans/${id}/payments`, { method: 'POST', body: JSON.stringify(body) }),
+        updatePayment: (id: number, body: { amount?: number; account_id?: number | null; paid_at?: string; note?: string }) =>
+            apiFetch<{ amount: number }>(`/loans/payments/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
         removePayment: (id: number) => apiFetch<{ amount: number }>(`/loans/payments/${id}`, { method: 'DELETE' }),
     },
     transfers: {

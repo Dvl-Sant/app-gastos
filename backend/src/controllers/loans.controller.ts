@@ -49,6 +49,14 @@ export class LoansController {
         }
     }
 
+    static async updatePayment(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            res.json(await LoansService.updatePayment(req.user!.id, Number(req.params.id), req.body));
+        } catch (error) {
+            next(error);
+        }
+    }
+
     static async removePayment(req: AuthRequest, res: Response, next: NextFunction) {
         try {
             res.json(await LoansService.removePayment(req.user!.id, Number(req.params.id)));
