@@ -115,7 +115,7 @@ export default function CashflowPage() {
                     <Skeleton active paragraph={{ rows: 8 }} />
                 ) : data ? (
                     <>
-                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${considerSavings ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
                             <div className="bg-white rounded-xl border border-border-subtle shadow-sm p-4">
                                 <Statistic
                                     title={<span className="text-[10px] uppercase font-bold text-slate-500">Ingresos en el rango</span>}
@@ -124,6 +124,15 @@ export default function CashflowPage() {
                                     prefix={<ArrowUpRight className="w-4 h-4 inline" />}
                                 />
                             </div>
+                            {considerSavings && (
+                                <div className="bg-white rounded-xl border border-primary/30 shadow-sm p-4">
+                                    <Statistic
+                                        title={<span className="text-[10px] uppercase font-bold text-slate-500">Ahorros disponibles</span>}
+                                        value={formatCurrency(savingsTotal)}
+                                        valueStyle={{ color: '#1772da', fontWeight: 800 }}
+                                    />
+                                </div>
+                            )}
                             <div className="bg-white rounded-xl border border-border-subtle shadow-sm p-4">
                                 <Statistic
                                     title={<span className="text-[10px] uppercase font-bold text-slate-500">Gastos que vencen (pendiente)</span>}
@@ -135,9 +144,13 @@ export default function CashflowPage() {
                             </div>
                             <div className="bg-white rounded-xl border border-border-subtle shadow-sm p-4">
                                 <Statistic
-                                    title={<span className="text-[10px] uppercase font-bold text-slate-500">Neto del periodo</span>}
-                                    value={formatCurrency(net)}
-                                    valueStyle={{ color: net >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }}
+                                    title={
+                                        <span className="text-[10px] uppercase font-bold text-slate-500">
+                                            {considerSavings ? 'Neto (Ingresos + Ahorros − Gastos)' : 'Neto del periodo'}
+                                        </span>
+                                    }
+                                    value={formatCurrency(considerSavings ? net + savingsTotal : net)}
+                                    valueStyle={{ color: (considerSavings ? net + savingsTotal : net) >= 0 ? '#10b981' : '#ef4444', fontWeight: 800 }}
                                 />
                             </div>
                         </motion.div>
