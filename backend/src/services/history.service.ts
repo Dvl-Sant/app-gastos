@@ -2,7 +2,7 @@ import pool from '../db/pool';
 
 export interface HistoryInflow {
     id: string;
-    kind: 'ingreso' | 'compartido';
+    kind: 'ingreso' | 'compartido' | 'abono';
     name: string;
     detail: string;
     amount: string;
@@ -122,7 +122,28 @@ export class HistoryService {
             [userId, ...rangeParams]
         );
 
+        // Dinero que ENTRA: abonos de préstamos + compartidos + ingresos liquidados
+        const loanPaidRange = hasRange ? ' AND lp.paid_at::date BETWEEN $2 AND $3' : '';
+        const { rows: loanPaidRows } = await pool.query(
+            `SELECT lp.id, lp.amount, lp.paid_at, lp.note,
+                    l.person_name, l.concept
+             FROM loan_payments lp JOIN loans l ON l.id = lp.loan_id
+             WHERE lp.user_id = $1${loanPaidRange}
+             ORDER BY lp.paid_at DESC
+             LIMIT 200`,
+            [userId, ...rangeParams]
+        );
+
         const inflows: HistoryInflow[] = [
+            ...loanPaidRows.map((p) => ({
+                id: `abono-${p.id}`,
+                kind: 'abono' as const,
+                name: p.person_name,
+                detail: `Abono de préstamo: ${p.concept}`,
+                amount: p.amount,
+                date: new Date(p.paid_at).toISOString(),
+                note: p.note,
+            })),
             ...sharedRows.map((p) => ({
                 id: `shared-${p.id}`,
                 kind: 'compartido' as const,
@@ -143,6 +164,17 @@ export class HistoryService {
             })),
         ].sort((a, b) => (a.date < b.date ? 1 : -1));
 
-        return { groups: result, inflows };
+        // Préstamos otorgados (dinero que sale hacia alguien)
+        const loansGivenRange = hasRange ? ' AND l.loan_date BETWEEN $2 AND $3' : '';
+        const { rows: loansGiven } = await pool.query(
+            `SELECT l.id, l.amount, l.loan_date, l.person_name, l.concept, a.name AS account_name
+             FROM loans l LEFT JOIN accounts a ON a.id = l.account_id
+             WHERE l.user_id = $1${loansGivenRange}
+             ORDER BY l.loan_date DESC
+             LIMIT 200`,
+            [userId, ...rangeParams]
+        );
+
+        return { groups: result, inflows, loans_given: loansGiven };
     }
 }

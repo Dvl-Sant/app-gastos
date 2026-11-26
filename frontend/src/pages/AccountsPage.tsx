@@ -10,6 +10,7 @@ import DuesTable from '../components/DuesTable';
 import AccountModal from '../components/AccountModal';
 import ExpenseModal from '../components/ExpenseModal';
 import PaymentModal from '../components/PaymentModal';
+import TransferBetweenAccountsModal, { type TransferFormValues } from '../components/TransferBetweenAccountsModal';
 import type { PaymentSourceInput } from '../hooks/useFetch';
 import { api, useFetch } from '../hooks/useFetch';
 import type { Account, Due, Expense } from '../types';
@@ -35,6 +36,7 @@ export default function AccountsPage() {
     const [sortMode, setSortMode] = useState<'pago' | 'creacion'>('pago');
     const categories = useFetch(api.expenseCategories.list);
     const banks = useFetch(api.banks.list);
+    const [transferOpen, setTransferOpen] = useState(false);
 
     const sortedAccounts = useMemo(() => {
         const list = [...(accounts.data ?? [])];
@@ -157,6 +159,18 @@ export default function AccountsPage() {
         });
     };
 
+    const submitTransfer = async (values: TransferFormValues) => {
+        try {
+            await api.transfers.create(values);
+            message.success('Traspaso realizado');
+            setTransferOpen(false);
+            await accounts.reload();
+            await savings.reload();
+        } catch (e) {
+            handleError(e);
+        }
+    };
+
     const submitEditExpense = async (payload: Record<string, unknown>, editingId: number | null) => {
         if (!editingId) return;
         try {
@@ -191,6 +205,13 @@ export default function AccountsPage() {
                                 { label: 'Como las agregué', value: 'creacion' },
                             ]}
                         />
+                        <Button
+                            icon={<Plus className="w-4 h-4" />}
+                            onClick={() => setTransferOpen(true)}
+                            className="!text-primary !bg-primary/5 !rounded-full !font-bold !text-sm !px-3"
+                        >
+                            Traspasar
+                        </Button>
                         <Button
                             type="primary"
                             icon={<Plus className="w-4 h-4" />}
@@ -365,6 +386,12 @@ export default function AccountsPage() {
                     setPayStatementOpen(false);
                 }}
                 onSubmit={payingDue ? submitPayDue : submitPayStatement}
+            />
+            <TransferBetweenAccountsModal
+                open={transferOpen}
+                accounts={accounts.data ?? []}
+                onCancel={() => setTransferOpen(false)}
+                onSubmit={submitTransfer}
             />
             <ExpenseModal
                 open={expenseModalOpen}

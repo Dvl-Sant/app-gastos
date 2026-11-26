@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LogOut, History, LayoutDashboard, Wallet, CalendarRange, Users } from 'lucide-react';
+import { LogOut, History, LayoutDashboard, Wallet, CalendarRange, Users, HandCoins } from 'lucide-react';
 import { App as AntApp } from 'antd';
 import { clearSession, getSession } from '../auth/session';
 
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
     { path: '/', label: 'Panel', icon: LayoutDashboard },
     { path: '/accounts', label: 'Cuentas', icon: Wallet },
     { path: '/flujo', label: 'Flujo', icon: CalendarRange },
+    { path: '/loans', label: 'Préstamos', icon: HandCoins },
     { path: '/shared', label: 'Compartidos', icon: Users },
     { path: '/history', label: 'Historial', icon: History },
 ];

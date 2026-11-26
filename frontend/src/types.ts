@@ -191,7 +191,7 @@ export interface HistoryGroup {
 
 export interface InflowEntry {
     id: string;
-    kind: 'ingreso' | 'compartido';
+    kind: 'ingreso' | 'compartido' | 'abono';
     name: string;
     detail: string;
     amount: string;
@@ -199,9 +199,44 @@ export interface InflowEntry {
     note: string | null;
 }
 
+export interface LoanGiven {
+    id: number;
+    amount: string;
+    loan_date: string;
+    person_name: string;
+    concept: string;
+    account_name: string | null;
+}
+
 export interface HistoryResponse {
     groups: HistoryGroup[];
     inflows: InflowEntry[];
+    loans_given: LoanGiven[];
+}
+
+// --- Préstamos ---
+
+export interface LoanPaymentEntry {
+    id: number;
+    amount: string;
+    account_name: string | null;
+    paid_at: string;
+    note: string | null;
+}
+
+export interface Loan {
+    id: number;
+    person_name: string;
+    concept: string;
+    amount: string;
+    account_id: number | null;
+    loan_date: string;
+    comments: string | null;
+    account_name?: string | null;
+    paid_amount?: string;
+    remaining?: string;
+    status?: 'activo' | 'liquidado';
+    payments?: LoanPaymentEntry[];
 }
 
 // --- Gastos compartidos (suscripciones familiares) ---

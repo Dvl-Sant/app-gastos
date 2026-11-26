@@ -75,10 +75,14 @@ export default function HistoryPage() {
                                                         {entry.name}
                                                         <span
                                                             className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                                                                entry.kind === 'ingreso' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'
+                                                                entry.kind === 'ingreso'
+                                                                    ? 'bg-green-50 text-green-600'
+                                                                    : entry.kind === 'abono'
+                                                                        ? 'bg-emerald-50 text-emerald-600'
+                                                                        : 'bg-blue-50 text-blue-600'
                                                             }`}
                                                         >
-                                                            {entry.kind === 'ingreso' ? 'Ingreso' : 'Compartido'}
+                                                            {entry.kind === 'ingreso' ? 'Ingreso' : entry.kind === 'abono' ? 'Abono préstamo' : 'Compartido'}
                                                         </span>
                                                     </p>
                                                     <p className="text-[11px] text-slate-400 font-medium">
@@ -93,6 +97,33 @@ export default function HistoryPage() {
                                 </div>
                             </div>
                         </motion.section>
+
+                        {/* Préstamos otorgados */}
+                        {(data?.loans_given ?? []).length > 0 && (
+                            <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+                                <div className="bg-white rounded-xl border border-border-subtle overflow-hidden shadow-sm">
+                                    <div className="bg-purple-50 px-6 py-4 border-b border-border-subtle">
+                                        <h3 className="text-base font-bold text-purple-600">Préstamos otorgados</h3>
+                                    </div>
+                                    <div className="divide-y divide-slate-50">
+                                        {(data?.loans_given ?? []).map((l) => (
+                                            <div key={l.id} className="flex items-center justify-between px-4 py-3">
+                                                <div>
+                                                    <p className="font-bold text-slate-900 text-sm">
+                                                        {l.person_name} <span className="text-slate-400 font-medium">• {l.concept}</span>
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-400 font-medium">
+                                                        {new Date(`${l.loan_date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                        {l.account_name ? ` • salió de ${l.account_name}` : ''}
+                                                    </p>
+                                                </div>
+                                                <span className="text-danger font-bold">-{formatCurrency(l.amount)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </motion.section>
+                        )}
 
                         {/* Grupos de salidas (pagos por cuenta + traspasos) */}
                         {(data?.groups ?? []).length === 0 && (data?.inflows ?? []).length === 0 && (

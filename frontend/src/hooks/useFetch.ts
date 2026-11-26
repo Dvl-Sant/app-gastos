@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type DependencyList } from 'react';
 import { apiFetch } from '../api/client';
-import type { Account, Bank, Cashflow, Due, Expense, ExpenseCategory, HistoryResponse, Income, Statement } from '../types';
+import type { Account, Bank, Cashflow, Due, Expense, ExpenseCategory, HistoryResponse, Income, Loan, Statement } from '../types';
 
 interface UseFetchResult<T> {
     data: T | null;
@@ -116,6 +116,21 @@ export const api = {
     cashflow: (from: string, to: string) => apiFetch<Cashflow>(`/cashflow?from=${from}&to=${to}`),
     history: (from?: string, to?: string) =>
         apiFetch<HistoryResponse>(`/history${from && to ? `?from=${from}&to=${to}` : ''}`),
+    loans: {
+        list: () => apiFetch<Loan[]>('/loans'),
+        create: (body: { person_name: string; concept: string; amount: number; account_id?: number | null; loan_date?: string; comments?: string }) =>
+            apiFetch<Loan>('/loans', { method: 'POST', body: JSON.stringify(body) }),
+        update: (id: number, body: { person_name?: string; concept?: string; comments?: string }) =>
+            apiFetch<unknown>(`/loans/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+        remove: (id: number) => apiFetch<void>(`/loans/${id}`, { method: 'DELETE' }),
+        pay: (id: number, body: { amount: number; account_id?: number | null; note?: string }) =>
+            apiFetch<{ remaining: number }>(`/loans/${id}/payments`, { method: 'POST', body: JSON.stringify(body) }),
+        removePayment: (id: number) => apiFetch<{ amount: number }>(`/loans/payments/${id}`, { method: 'DELETE' }),
+    },
+    transfers: {
+        create: (body: { from_account_id: number; to_account_id: number; amount: number; note?: string }) =>
+            apiFetch<unknown>('/transfers', { method: 'POST', body: JSON.stringify(body) }),
+    },
     shared: {
         summary: () => apiFetch<import('../types').SharedAlert[]>('/shared/summary'),
         groups: {

@@ -17,6 +17,8 @@ import sharedRoutes from './routes/shared.routes';
 import expenseCategoriesRoutes from './routes/expense-categories.routes';
 import banksRoutes from './routes/banks.routes';
 import settingsRoutes from './routes/settings.routes';
+import loansRoutes from './routes/loans.routes';
+import transfersRoutes from './routes/transfers.routes';
 import { authenticateToken } from './middleware/auth.middleware';
 import { config } from './config';
 import { HttpError } from './utils/errors';
@@ -56,6 +58,8 @@ app.use('/api/shared', authenticateToken, sharedRoutes);
 app.use('/api/expense-categories', authenticateToken, expenseCategoriesRoutes);
 app.use('/api/banks', authenticateToken, banksRoutes);
 app.use('/api/settings', authenticateToken, settingsRoutes);
+app.use('/api/loans', authenticateToken, loansRoutes);
+app.use('/api/transfers', authenticateToken, transfersRoutes);
 
 app.use((_req: Request, res: Response) => {
     res.status(404).json({ status: 'error', message: 'Ruta no encontrada' });

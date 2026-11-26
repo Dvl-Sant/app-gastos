@@ -8,6 +8,7 @@ import HistoryPage from './pages/HistoryPage';
 import AccountsPage from './pages/AccountsPage';
 import CashflowPage from './pages/CashflowPage';
 import SharedPage from './pages/SharedPage';
+import LoansPage from './pages/LoansPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const theme = {
@@ -57,6 +58,16 @@ function AnimatedRoutes() {
                         <ProtectedRoute>
                             <motion.div {...pageMotion} className="min-h-screen">
                                 <CashflowPage />
+                            </motion.div>
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/loans"
+                    element={
+                        <ProtectedRoute>
+                            <motion.div {...pageMotion} className="min-h-screen">
+                                <LoansPage />
                             </motion.div>
                         </ProtectedRoute>
                     }
