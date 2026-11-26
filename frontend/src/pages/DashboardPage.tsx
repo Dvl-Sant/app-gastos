@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert, App as AntApp, Button, DatePicker, Skeleton, Statistic } from 'antd';
+import { Alert, App as AntApp, Button, DatePicker, Select, Skeleton, Statistic } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { motion } from 'framer-motion';
 import { CalendarClock, DollarSign, Lightbulb, Pencil, Plus, TrendingUp, Users } from 'lucide-react';
@@ -39,6 +39,8 @@ export default function DashboardPage() {
 
     const expensesList = useFetch(api.expenses.list);
     const categories = useFetch(api.expenseCategories.list);
+    const incomeAccount = useFetch(api.settings.getIncomeAccount);
+    const [settingsLoading, setSettingsLoading] = useState(false);
 
     const monthDues = useFetch(
         () =>
@@ -201,6 +203,33 @@ export default function DashboardPage() {
                                 >
                                     <Pencil className="w-3 h-3" /> Actualizar ahorros
                                 </button>
+                                {(summary?.savings_linked ?? []).length > 0 && (
+                                    <p className="text-[10px] text-slate-500 mt-1 font-medium">
+                                        Incluye {formatCurrency(summary?.savings_linked.reduce((acc, a) => acc + Number(a.balance), 0))} de
+                                        débitos vinculados ({summary?.savings_linked.map((a) => a.name).join(', ')})
+                                    </p>
+                                )}
+                                <div className="mt-3 flex items-center gap-2 max-w-xs">
+                                    <span className="text-[10px] font-bold uppercase text-slate-500 shrink-0">Ingresos se acreditan en</span>
+                                    <Select
+                                        size="small"
+                                        className="!min-w-0 flex-1"
+                                        value={incomeAccount.data?.account_id ?? undefined}
+                                        loading={settingsLoading}
+                                        onChange={(v: number) => {
+                                            setSettingsLoading(true);
+                                            api.settings
+                                                .setIncomeAccount(v)
+                                                .then(() => message.success('Los ingresos se acreditarán en la cuenta seleccionada'))
+                                                .catch((e) => message.error(e instanceof Error ? e.message : 'Error'))
+                                                .finally(() => setSettingsLoading(false));
+                                        }}
+                                        options={(accounts.data ?? [])
+                                            .filter((a) => a.type === 'efectivo' || a.type === 'debito')
+                                            .map((a) => ({ value: a.id, label: a.name }))}
+                                        placeholder="Efectivo"
+                                    />
+                                </div>
                             </div>
                             <div className="grid grid-cols-3 gap-4 items-center">
                                 <Statistic
@@ -364,14 +393,46 @@ export default function DashboardPage() {
                             </Button>
                         </div>
                     </div>
-                    <div className="bg-white rounded-xl border border-border-subtle overflow-hidden shadow-sm">
-                        <DuesTable
-                            dues={monthDues.data ?? []}
-                            loading={monthDues.loading}
-                            showAccount
-                            onPay={(due) => setPayingDue(due)}
-                            emptyText={`Nada vence en ${viewMonth.format('MMMM YYYY')}.`}
-                        />
+                    <div className="space-y-5">
+                        {(() => {
+                            const dues = monthDues.data ?? [];
+                            if (monthDues.loading) {
+                                return <Skeleton active paragraph={{ rows: 4 }} />;
+                            }
+                            if (dues.length === 0) {
+                                return (
+                                    <div className="bg-white rounded-xl border border-border-subtle shadow-sm">
+                                        <Alert type="info" showIcon message={`Nada vence en ${viewMonth.format('MMMM YYYY')}.`} />
+                                    </div>
+                                );
+                            }
+                            // Agrupado primario por cuenta, ordenado por fecha dentro de cada grupo
+                            const groups = new Map<number, { name: string; dues: typeof dues }>();
+                            for (const due of dues) {
+                                if (!groups.has(due.account_id)) groups.set(due.account_id, { name: due.account_name ?? '—', dues: [] });
+                                groups.get(due.account_id)!.dues.push(due);
+                            }
+                            return [...groups.values()]
+                                .sort((a, b) => a.dues[0].due_date.localeCompare(b.dues[0].due_date))
+                                .map((group) => {
+                                    const total = group.dues.reduce((acc, d) => acc + Number(d.amount), 0);
+                                    return (
+                                        <div key={group.name} className="bg-white rounded-xl border border-border-subtle overflow-hidden shadow-sm">
+                                            <div className="bg-primary/5 px-4 py-2.5 border-b border-border-subtle flex justify-between items-center">
+                                                <h4 className="text-sm font-bold text-primary">{group.name}</h4>
+                                                <span className="text-xs font-bold text-slate-600">
+                                                    {group.dues.length} {group.dues.length === 1 ? 'vencimiento' : 'vencimientos'} • {formatCurrency(total)}
+                                                </span>
+                                            </div>
+                                            <DuesTable
+                                                dues={group.dues}
+                                                showAccount={false}
+                                                onPay={(due) => setPayingDue(due)}
+                                            />
+                                        </div>
+                                    );
+                                });
+                        })()}
                     </div>
                 </motion.section>
 

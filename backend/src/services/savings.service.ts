@@ -38,6 +38,9 @@ export class SavingsService {
             );
             const source = sourceRows[0];
             if (!source) throw new HttpError(400, 'El traspaso debe salir de una cuenta de efectivo o débito');
+            if (source.linked_to_savings) {
+                throw new HttpError(400, `"${source.name}" está vinculada a ahorros: su saldo ya cuenta como ahorro, no necesita traspaso`);
+            }
 
             await client.query('UPDATE accounts SET balance = balance - $1 WHERE id = $2', [amount, sourceAccountId]);
 

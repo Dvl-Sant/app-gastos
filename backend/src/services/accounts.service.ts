@@ -4,16 +4,18 @@ import { cycleWindow, diffDays, monthWindow, nextCutDate, paymentDateForCut, tod
 import { Account, CreateAccountDTO, UpdateAccountDTO } from '../models/Account';
 import { Due } from '../models/Expense';
 import type { PaymentSource } from '../models/Payment';
+import { BanksService } from './banks.service';
 
 const ACCOUNT_SELECT = `
-    SELECT a.*,
+    SELECT a.*, b.name AS bank_name,
            CASE WHEN a.type = 'credito' THEN COALESCE((
                SELECT SUM(d.amount - d.paid_amount) FROM dues d WHERE d.account_id = a.id AND d.is_paid = false
            ), 0) ELSE 0 END AS pending_debt
     FROM accounts a
+    LEFT JOIN banks b ON b.id = a.bank_id
 `;
 
-/** Calcula próximo corte / fecha límite de pago y días restantes de una tarjeta. */
+/** Calcula próximo corte / fecha límite de pago, días restantes y uso del límite. */
 function enrichCreditCard(account: Account, reference: string): Account {
     if (account.type !== 'credito' || !account.cut_off_day) {
         return { ...account, next_cut_date: null, next_payment_date: null, days_until_cut: null, days_until_payment: null };
@@ -22,12 +24,16 @@ function enrichCreditCard(account: Account, reference: string): Account {
     const pay = account.payment_due_day
         ? paymentDateForCut(cut, account.cut_off_day, account.payment_due_day)
         : cut;
+    const limit = account.credit_limit === null ? null : toNum(account.credit_limit);
+    const pending = toNum(account.pending_debt);
+    const usage = limit && limit > 0 ? Math.min(100, Math.round((pending / limit) * 100)) : null;
     return {
         ...account,
         next_cut_date: cut,
         next_payment_date: pay,
         days_until_cut: diffDays(reference, cut),
         days_until_payment: diffDays(reference, pay),
+        usage,
     };
 }
 
@@ -59,6 +65,7 @@ export class AccountsService {
 
     static async create(userId: number, data: CreateAccountDTO): Promise<Account> {
         const { name, type, cut_off_day, payment_due_day, balance, color } = data;
+        if (!name) throw new HttpError(400, 'El nombre de la cuenta es requerido');
         if (type === 'credito') {
             if (!cut_off_day) throw new HttpError(400, 'Las tarjetas de crédito requieren día de corte');
         } else {
@@ -66,10 +73,20 @@ export class AccountsService {
                 throw new HttpError(400, 'Solo las tarjetas de crédito tienen día de corte / límite de pago');
             }
         }
+
+        const norm = this.normalizeByType(data as CreateAccountDTO & Record<string, unknown>);
+        const bankId = norm.bank_id as number | null;
+        if (bankId !== null && bankId !== undefined) await BanksService.ensureExists(userId, Number(bankId));
+
         const { rows } = await pool.query(
-            `INSERT INTO accounts (user_id, name, type, cut_off_day, payment_due_day, balance, color)
-             VALUES ($1, $2, $3, $4, $5, COALESCE($6, 0), $7) RETURNING *`,
-            [userId, name, type, cut_off_day ?? null, payment_due_day ?? null, balance ?? 0, color ?? null]
+            `INSERT INTO accounts (user_id, name, type, cut_off_day, payment_due_day, balance, color,
+                 bank_id, credit_limit, linked_to_savings)
+             VALUES ($1, $2, $3, $4, $5, COALESCE($6, 0), $7, $8, $9, COALESCE($10, false)) RETURNING *`,
+            [
+                userId, name, type, cut_off_day ?? null, payment_due_day ?? null, balance ?? 0, color ?? null,
+                bankId ?? null, (norm.credit_limit as number | null | undefined) ?? null,
+                norm.linked_to_savings === true,
+            ]
         );
         return rows[0];
     }
@@ -78,19 +95,24 @@ export class AccountsService {
         const existing = await this.getById(id, userId);
         if (!existing) return null;
 
+        const norm = this.normalizeByType({ type: existing.type, ...data } as CreateAccountDTO & Record<string, unknown>);
+        if (norm.bank_id !== undefined && norm.bank_id !== null) {
+            await BanksService.ensureExists(userId, Number(norm.bank_id));
+        }
+
         const fields: string[] = [];
         const values: unknown[] = [];
         let idx = 1;
-        for (const key of ['name', 'cut_off_day', 'payment_due_day', 'balance', 'color'] as const) {
-            const value = (data as Record<string, unknown>)[key];
-            if (value !== undefined) {
-                if (key === 'cut_off_day' && existing.type !== 'credito') {
-                    throw new HttpError(400, 'Solo las tarjetas de crédito tienen día de corte');
-                }
-                fields.push(`${key} = $${idx}`);
-                values.push(value);
-                idx++;
+        for (const key of ['name', 'cut_off_day', 'payment_due_day', 'balance', 'color',
+            'bank_id', 'credit_limit', 'linked_to_savings'] as const) {
+            const value = (norm as Record<string, unknown>)[key];
+            if (value === undefined) continue;
+            if (key === 'cut_off_day' && existing.type !== 'credito') {
+                throw new HttpError(400, 'Solo las tarjetas de crédito tienen día de corte');
             }
+            fields.push(`${key} = $${idx}`);
+            values.push(value);
+            idx++;
         }
         if (fields.length === 0) return existing;
 
@@ -105,6 +127,32 @@ export class AccountsService {
     static async remove(id: number, userId: number): Promise<boolean> {
         const { rowCount } = await pool.query('DELETE FROM accounts WHERE id = $1 AND user_id = $2', [id, userId]);
         return (rowCount ?? 0) > 0;
+    }
+
+    /**
+     * Normaliza los campos según el tipo de cuenta:
+     *  - efectivo: sin banco, sin límite, sin vínculo a ahorros
+     *  - debito: puede vincularse a ahorros (credit_limit ignorado)
+     *  - credito: banco recomendado + credit_limit opcional (vínculo ignorado)
+     */
+    private static normalizeByType(data: CreateAccountDTO & Record<string, unknown>): Partial<CreateAccountDTO> {
+        const type = data.type;
+        const out: Record<string, unknown> = { ...data };
+
+        if (type === 'efectivo') {
+            out.bank_id = null;
+            out.credit_limit = null;
+            out.linked_to_savings = false;
+        } else if (type === 'debito') {
+            out.credit_limit = null;
+            out.linked_to_savings = Boolean(data.linked_to_savings);
+        } else {
+            out.linked_to_savings = false;
+            if (data.credit_limit !== undefined && data.credit_limit !== null && Number(data.credit_limit) < 0) {
+                throw new HttpError(400, 'El límite de crédito no puede ser negativo');
+            }
+        }
+        return out as Partial<CreateAccountDTO>;
     }
 
     /**

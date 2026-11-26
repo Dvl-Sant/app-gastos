@@ -107,7 +107,15 @@ export class IncomesService {
         for (const income of incomes) {
             const amount = toNum(income.amount);
             const createdDate = income.created_at ? dateKeyOf(income.created_at) : '0000-01-01';
-            const anchor = createdDate > from ? createdDate : from;
+            // El ancla de creación aplica solo a los frecuentes (evita proyectar
+            // ocurrencias históricas que nunca ocurrieron). Los únicos declarados
+            // a posteriori sí liquidan en su fecha real.
+            const anchor =
+                income.income_type === 'unico'
+                    ? '0000-01-01'
+                    : createdDate > from
+                        ? createdDate
+                        : from;
 
             if (income.income_type === 'unico') {
                 if (income.received_at && income.received_at >= anchor && income.received_at <= to) {
@@ -147,8 +155,8 @@ export class IncomesService {
 
     /**
      * Liquida los ingresos cuya fecha ya llegó o pasó: cada ocurrencia se
-     * acredita UNA sola vez a la primera cuenta de efectivo del usuario
-     * (idempotente por income_settlements). Llamar al abrir panel/flujo.
+     * acredita UNA sola vez a la cuenta de destino del usuario (configurable;
+     * por defecto la primera de efectivo). Idempotente por income_settlements.
      */
     static async settleIncomes(userId: number): Promise<void> {
         const client = await getClient();
@@ -156,12 +164,29 @@ export class IncomesService {
             await client.query('BEGIN');
 
             const today = todayISO();
-            const { rows: efectivoRows } = await client.query(
-                "SELECT id FROM accounts WHERE user_id = $1 AND type = 'efectivo' ORDER BY created_at ASC LIMIT 1",
+            // Destino configurado por el usuario (si es válido), si no Efectivo
+            const { rows: settingRows } = await client.query(
+                'SELECT income_settlement_account_id FROM users WHERE id = $1',
                 [userId]
             );
-            const efectivoId = efectivoRows[0]?.id;
-            if (!efectivoId) {
+            const configuredId = settingRows[0]?.income_settlement_account_id ?? null;
+
+            let targetId: number | null = null;
+            if (configuredId) {
+                const { rows: targetRows } = await client.query(
+                    "SELECT id FROM accounts WHERE id = $1 AND user_id = $2 AND type IN ('efectivo','debito')",
+                    [configuredId, userId]
+                );
+                targetId = targetRows[0]?.id ?? null;
+            }
+            if (!targetId) {
+                const { rows: fallbackRows } = await client.query(
+                    "SELECT id FROM accounts WHERE user_id = $1 AND type = 'efectivo' ORDER BY created_at ASC LIMIT 1",
+                    [userId]
+                );
+                targetId = fallbackRows[0]?.id ?? null;
+            }
+            if (!targetId) {
                 await client.query('ROLLBACK');
                 return;
             }
@@ -181,7 +206,7 @@ export class IncomesService {
                 if (inserted.length > 0) {
                     await client.query('UPDATE accounts SET balance = balance + $1 WHERE id = $2', [
                         occ.amount,
-                        efectivoId,
+                        targetId,
                     ]);
                 }
             }

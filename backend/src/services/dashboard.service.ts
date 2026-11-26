@@ -14,6 +14,9 @@ export interface CardTipEntry {
     next_payment_date: string;
     days_until_cut: number;
     days_until_payment: number;
+    pending_debt: number;
+    credit_limit: number | null;
+    usage_percent: number | null;
 }
 
 export interface CardTip {
@@ -45,7 +48,17 @@ export class DashboardService {
             'SELECT total_amount FROM user_savings WHERE user_id = $1 LIMIT 1',
             [userId]
         );
-        const savings = toNum(savingsRows[0]?.total_amount);
+        const savingsBase = toNum(savingsRows[0]?.total_amount);
+
+        // Débitos vinculados a ahorros: su saldo cuenta como ahorro
+        const { rows: linkedRows } = await pool.query(
+            `SELECT id, name, balance FROM accounts
+             WHERE user_id = $1 AND type = 'debito' AND linked_to_savings = true
+             ORDER BY created_at ASC`,
+            [userId]
+        );
+        const savingsLinked = Math.round(linkedRows.reduce((acc, a) => acc + toNum(a.balance), 0) * 100) / 100;
+        const savings = Math.round((savingsBase + savingsLinked) * 100) / 100;
 
         const month = monthWindow(reference);
         const { rows: monthDues } = await pool.query(
@@ -101,8 +114,8 @@ export class DashboardService {
         const shared = await SharedService.getAlerts(userId);
 
         // Tip financiero: la tarjeta con el corte más lejano da más días de
-        // financiamiento (lo que compres hoy entra al ciclo que cierra más
-        // tarde y pagarás más lejos); la de corte más cercano conviene evitarla.
+        // financiamiento. Entre las que quedan bajo el 80% de su límite se
+        // elige la de corte más lejano; si todas están al límite se avisa.
         let card_tip: CardTip | null = null;
         const creditCards = accountRows.filter((a) => a.type === 'credito' && a.cut_off_day);
         if (creditCards.length > 0) {
@@ -112,6 +125,9 @@ export class DashboardService {
                     const pay = a.payment_due_day
                         ? paymentDateForCut(cut, a.cut_off_day!, a.payment_due_day)
                         : cut;
+                    const limit = a.credit_limit === null ? null : toNum(a.credit_limit);
+                    const pending = toNum(a.pending_debt);
+                    const usage = limit && limit > 0 ? Math.min(100, Math.round((pending / limit) * 100)) : null;
                     return {
                         id: a.id,
                         name: a.name,
@@ -120,18 +136,28 @@ export class DashboardService {
                         next_payment_date: pay,
                         days_until_cut: diffDays(reference, cut),
                         days_until_payment: diffDays(reference, pay),
+                        pending_debt: Math.round(pending * 100) / 100,
+                        credit_limit: limit,
+                        usage_percent: usage,
                     };
                 })
                 .sort((x, y) => y.days_until_cut - x.days_until_cut);
+
+            const withRoom = cards.filter((c) => c.usage_percent === null || c.usage_percent < 80);
+            const pool_ = withRoom.length > 0 ? withRoom : cards;
+            const best = pool_[0];
+            const cautionCandidate = cards[cards.length - 1];
             card_tip = {
-                best: cards[0],
-                caution: cards.length > 1 ? cards[cards.length - 1] : null,
+                best,
+                caution: cards.length > 1 && cautionCandidate.id !== best.id ? cautionCandidate : null,
                 cards,
             };
         }
 
         return {
             savings,
+            savings_base: savingsBase,
+            savings_linked: linkedRows.map((a) => ({ id: a.id, name: a.name, balance: a.balance })),
             currency: 'USD',
             month: {
                 from: month.from,

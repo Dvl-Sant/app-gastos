@@ -53,6 +53,10 @@ export default function CashflowPage() {
 
     const data = cashflow.data;
     const net = data ? data.totals.incomes - data.totals.dues : 0;
+    const savingsTotal = savings.data ? Number(savings.data.total_amount) : 0;
+    const pending = data?.totals.dues_pending ?? 0;
+    const covered = savingsTotal - pending;
+    const [considerSavings, setConsiderSavings] = useState(false);
 
     return (
         <div className="flex flex-col min-h-screen bg-background-light">
@@ -62,7 +66,18 @@ export default function CashflowPage() {
                 {cashflow.error && <Alert type="error" showIcon message={cashflow.error} />}
 
                 <div className="flex items-center justify-between flex-wrap gap-3">
-                    <h3 className="text-lg font-bold text-slate-800">¿Qué vence en este rango?</h3>
+                    <div className="flex items-center gap-4 flex-wrap">
+                        <h3 className="text-lg font-bold text-slate-800">¿Qué vence en este rango?</h3>
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer bg-white border border-border-subtle rounded-full px-3 py-1.5 shadow-sm">
+                            <input
+                                type="checkbox"
+                                checked={considerSavings}
+                                onChange={(e) => setConsiderSavings(e.target.checked)}
+                                className="w-3.5 h-3.5 accent-primary"
+                            />
+                            Considerar mis ahorros ({formatCurrency(savingsTotal)})
+                        </label>
+                    </div>
                     <RangePicker
                         value={[range.from, range.to]}
                         onChange={(dates) => {
@@ -72,6 +87,29 @@ export default function CashflowPage() {
                         allowClear={false}
                     />
                 </div>
+
+                {considerSavings && !cashflow.loading && data && (
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={`rounded-xl border p-4 shadow-sm ${
+                        covered >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                    }`}>
+                        <p className="text-sm font-semibold text-slate-700">
+                            {covered >= 0 ? (
+                                <>
+                                    ✅ Tus ahorros (<b>{formatCurrency(savingsTotal)}</b>) <b>cubren</b> los pagos pendientes del rango
+                                    ({formatCurrency(pending)}). Te sobrarían <b className="text-success">{formatCurrency(covered)}</b>.
+                                </>
+                            ) : (
+                                <>
+                                    ⚠️ Tus ahorros (<b>{formatCurrency(savingsTotal)}</b>) <b>no cubren</b> los pagos pendientes del rango
+                                    ({formatCurrency(pending)}). Te faltan <b className="text-danger">{formatCurrency(Math.abs(covered))}</b>.
+                                </>
+                            )}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-1">
+                            Considera solo los pagos aún pendientes del rango; los ingresos proyectados no están descontados.
+                        </p>
+                    </motion.div>
+                )}
 
                 {cashflow.loading ? (
                     <Skeleton active paragraph={{ rows: 8 }} />

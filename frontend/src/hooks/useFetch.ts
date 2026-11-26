@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type DependencyList } from 'react';
 import { apiFetch } from '../api/client';
-import type { Account, Cashflow, Due, Expense, ExpenseCategory, HistoryResponse, Income, Statement } from '../types';
+import type { Account, Bank, Cashflow, Due, Expense, ExpenseCategory, HistoryResponse, Income, Statement } from '../types';
 
 interface UseFetchResult<T> {
     data: T | null;
@@ -42,6 +42,23 @@ export interface PaymentSourceInput {
 }
 
 export const api = {
+    banks: {
+        list: () => apiFetch<Bank[]>('/banks'),
+        create: (body: { name: string; color?: string }) =>
+            apiFetch<Bank>('/banks', { method: 'POST', body: JSON.stringify(body) }),
+        update: (id: number, name: string) =>
+            apiFetch<Bank>(`/banks/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+        remove: (id: number) => apiFetch<void>(`/banks/${id}`, { method: 'DELETE' }),
+    },
+    settings: {
+        getIncomeAccount: () =>
+            apiFetch<{ account_id: number | null; account_name: string | null }>('/settings/income-account'),
+        setIncomeAccount: (account_id: number) =>
+            apiFetch<{ account_id: number; account_name: string }>('/settings/income-account', {
+                method: 'PUT',
+                body: JSON.stringify({ account_id }),
+            }),
+    },
     accounts: {
         list: () => apiFetch<Account[]>('/accounts'),
         create: (body: unknown) => apiFetch<Account>('/accounts', { method: 'POST', body: JSON.stringify(body) }),

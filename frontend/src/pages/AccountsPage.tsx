@@ -34,6 +34,7 @@ export default function AccountsPage() {
     const [expenseModalOpen, setExpenseModalOpen] = useState(false);
     const [sortMode, setSortMode] = useState<'pago' | 'creacion'>('pago');
     const categories = useFetch(api.expenseCategories.list);
+    const banks = useFetch(api.banks.list);
 
     const sortedAccounts = useMemo(() => {
         const list = [...(accounts.data ?? [])];
@@ -206,26 +207,87 @@ export default function AccountsPage() {
 
                 {accounts.loading ? (
                     <Skeleton active paragraph={{ rows: 4 }} />
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {sortedAccounts.map((account, i) => (
-                            <motion.div
-                                key={account.id}
-                                initial={{ opacity: 0, y: 12 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.05, duration: 0.3 }}
-                            >
-                                <CreditCardVisual
-                                    account={account}
-                                    onOpen={() => setStatementAccountId(account.id)}
-                                    onEdit={() => {
-                                        setEditingAccount(account);
-                                        setAccountModalOpen(true);
-                                    }}
-                                    onDelete={() => deleteAccount(account)}
-                                />
-                            </motion.div>
-                        ))}
+                ) : sortedAccounts.length === 0 ? null : (
+                    <div className="space-y-7">
+                        {/* Efectivo (sin banco) */}
+                        {sortedAccounts.filter((a) => a.type === 'efectivo').length > 0 && (
+                            <section>
+                                <h4 className="text-sm font-bold uppercase tracking-wide text-slate-500 mb-3">Efectivo</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {sortedAccounts.filter((a) => a.type === 'efectivo').map((account, i) => (
+                                        <motion.div key={account.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, duration: 0.3 }}>
+                                            <CreditCardVisual
+                                                account={account}
+                                                onOpen={() => setStatementAccountId(account.id)}
+                                                onEdit={() => {
+                                                    setEditingAccount(account);
+                                                    setAccountModalOpen(true);
+                                                }}
+                                                onDelete={() => deleteAccount(account)}
+                                            />
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Bancos */}
+                        {(banks.data ?? []).map((bank) => {
+                            const cards = sortedAccounts.filter((a) => a.bank_id === bank.id);
+                            if (cards.length === 0) return null;
+                            const bankDebt = cards.reduce((acc, c) => acc + Number(c.pending_debt ?? 0), 0);
+                            return (
+                                <section key={bank.id}>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-bold uppercase tracking-wide text-slate-700 flex items-center gap-2">
+                                            <span className="size-3 rounded-full" style={{ background: bank.color ?? '#94a3b8' }} />
+                                            {bank.name}
+                                            <span className="text-slate-400 font-medium normal-case">• {cards.length} tarjeta{cards.length === 1 ? '' : 's'}</span>
+                                        </h4>
+                                        {bankDebt > 0 && (
+                                            <span className="text-xs font-bold text-danger">{formatCurrency(bankDebt)} de deuda</span>
+                                        )}
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {cards.map((account, i) => (
+                                            <motion.div key={account.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, duration: 0.3 }}>
+                                                <CreditCardVisual
+                                                    account={account}
+                                                    onOpen={() => setStatementAccountId(account.id)}
+                                                    onEdit={() => {
+                                                        setEditingAccount(account);
+                                                        setAccountModalOpen(true);
+                                                    }}
+                                                    onDelete={() => deleteAccount(account)}
+                                                />
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                </section>
+                            );
+                        })}
+
+                        {/* Sin banco asignado (crédito/débito) */}
+                        {sortedAccounts.filter((a) => a.type !== 'efectivo' && !a.bank_id).length > 0 && (
+                            <section>
+                                <h4 className="text-sm font-bold uppercase tracking-wide text-slate-500 mb-3">Otras cuentas</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {sortedAccounts.filter((a) => a.type !== 'efectivo' && !a.bank_id).map((account, i) => (
+                                        <motion.div key={account.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05, duration: 0.3 }}>
+                                            <CreditCardVisual
+                                                account={account}
+                                                onOpen={() => setStatementAccountId(account.id)}
+                                                onEdit={() => {
+                                                    setEditingAccount(account);
+                                                    setAccountModalOpen(true);
+                                                }}
+                                                onDelete={() => deleteAccount(account)}
+                                            />
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
                     </div>
                 )}
             </main>
@@ -283,6 +345,8 @@ export default function AccountsPage() {
             <AccountModal
                 open={accountModalOpen}
                 editing={editingAccount}
+                banks={banks.data ?? []}
+                onBanksChanged={banks.reload}
                 onCancel={() => {
                     setAccountModalOpen(false);
                     setEditingAccount(null);

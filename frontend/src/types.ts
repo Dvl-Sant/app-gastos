@@ -3,6 +3,13 @@ export interface User {
     username: string;
 }
 
+export interface Bank {
+    id: number;
+    name: string;
+    color: string | null;
+    cards_count?: number;
+}
+
 export type AccountType = 'efectivo' | 'debito' | 'credito';
 
 export interface Account {
@@ -13,7 +20,12 @@ export interface Account {
     payment_due_day: number | null;
     balance: string;
     color: string | null;
+    bank_id: number | null;
+    bank_name?: string | null;
+    credit_limit: string | null;
+    linked_to_savings: boolean;
     pending_debt?: string;
+    usage?: number | null;
     next_cut_date?: string | null;
     next_payment_date?: string | null;
     days_until_cut?: number | null;
@@ -129,10 +141,15 @@ export type CardTipEntry = {
     next_payment_date: string;
     days_until_cut: number;
     days_until_payment: number;
+    pending_debt: number;
+    credit_limit: number | null;
+    usage_percent: number | null;
 };
 
 export interface DashboardSummary {
     savings: number;
+    savings_base: number;
+    savings_linked: { id: number; name: string; balance: string }[];
     currency: string;
     month: {
         from: string;

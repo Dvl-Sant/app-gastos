@@ -102,6 +102,21 @@ export default function CreditCardVisual({ account, onOpen, onEdit, onDelete }: 
                             <div>
                                 <p className="text-[8px] font-bold uppercase tracking-widest text-white/60">Deuda pendiente</p>
                                 <p className="text-lg font-extrabold leading-tight">{formatCurrency(account.pending_debt ?? 0)}</p>
+                                {account.credit_limit && Number(account.credit_limit) > 0 && (
+                                    <div className="mt-1">
+                                        <div className="h-1.5 w-24 bg-white/25 rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full ${
+                                                    (account.usage ?? 0) >= 80 ? 'bg-red-400' : (account.usage ?? 0) >= 50 ? 'bg-yellow-300' : 'bg-green-300'
+                                                }`}
+                                                style={{ width: `${Math.min(100, account.usage ?? 0)}%` }}
+                                            />
+                                        </div>
+                                        <p className="text-[8px] text-white/70 mt-0.5 font-semibold">
+                                            Límite {formatCurrency(account.credit_limit)} • usado {account.usage ?? 0}%
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                             <div className="text-right">
                                 <p className="text-[9px] text-white/70 font-semibold leading-tight">
@@ -126,9 +141,14 @@ export default function CreditCardVisual({ account, onOpen, onEdit, onDelete }: 
                     ) : (
                         <div className="mt-1 flex items-end justify-between">
                             <div>
-                                <p className="text-[8px] font-bold uppercase tracking-widest text-white/60">Saldo</p>
+                                <p className="text-[8px] font-bold uppercase tracking-widest text-white/60">
+                                    {account.linked_to_savings ? 'Saldo (cuenta como ahorros)' : 'Saldo'}
+                                </p>
                                 <p className="text-lg font-extrabold leading-tight">{formatCurrency(account.balance)}</p>
                             </div>
+                            {account.linked_to_savings && (
+                                <span className="px-2 py-0.5 rounded-full bg-white/20 text-[9px] font-bold">VINCULADA A AHORROS</span>
+                            )}
                         </div>
                     )}
                 </div>
