@@ -106,8 +106,8 @@ export default function AccountModal({ open, editing, banks, onBanksChanged, onC
     /** Resuelve el banco: crea uno nuevo si el usuario escribió el nombre, o usa el seleccionado. */
     const resolveBankId = async (values: AccountFormValues): Promise<number | null> => {
         if (type === 'efectivo') return null;
-        if (newBankMode && values.bank_new?.trim()) {
-            const bank = await api.banks.create({ name: values.bank_new.trim() });
+        if (newBankMode && newBankName.trim()) {
+            const bank = await api.banks.create({ name: newBankName.trim() });
             await onBanksChanged();
             return bank.id;
         }
